@@ -35,6 +35,23 @@ export type DenialCategory =
   | "timely_filing"
   | "other";
 
+/** A labelled identifier pair from the updated extract_and_analyze_denial MCP. */
+export interface Identifier {
+  label: string;  // e.g. "member ID", "subscriber ID", "auth #"
+  value: string;
+}
+
+/** Trust-indicator flags returned in extraction_notes by the updated denial-inspector-mcp. */
+export interface ExtractionNotes {
+  patient_name_found?: boolean;
+  patient_address_found?: boolean;
+  identifiers_found?: boolean;
+  claim_id_found?: boolean;
+  denial_codes_found?: boolean;
+  denial_reason_found?: boolean;
+  [key: string]: boolean | undefined;
+}
+
 export interface DenialCase {
   caseId: string;
   payerName: ExtractedField<string>;
@@ -59,6 +76,27 @@ export interface DenialCase {
   missingInformation: ExtractedField<string[]>;
   rawText: string;
   docMeta: { docId: string; filename: string; mimeType: string };
+
+  // ── New fields from updated extract_and_analyze_denial MCP (optional) ─────
+  /** Patient's full name as parsed (preferred over memberName.value when present). */
+  patient_name?: string | null;
+  /** Patient's mailing address as parsed. */
+  patient_address?: string | null;
+  /**
+   * All identified IDs extracted from the denial letter:
+   * member ID, subscriber ID, account #, policy #, reference #, auth #, etc.
+   */
+  identifiers?: Identifier[];
+  /** Primary claim/reference ID (preferred over claimNumber.value when present). */
+  claim_id?: string | null;
+  /** Raw denial code(s) from the letter (e.g. ["CO-4", "PR-31"]). */
+  denial_codes?: string[];
+  /** Verbatim denial reason text from the letter. */
+  denial_reason_text?: string | null;
+  /** Human-readable explanation mapped from denial_codes. */
+  denial_code_analysis?: Record<string, string> | null;
+  /** Trust indicator flags produced during extraction. */
+  extraction_notes?: ExtractionNotes;
 }
 
 // ─── Knowledge Base Types ─────────────────────────────────────────────────────
@@ -115,6 +153,18 @@ export interface LetterSection {
   warnings?: string[];
 }
 
+/** Structured field summary exposed in AppealLetter for UI rendering. */
+export interface ParsedCaseFields {
+  patientName: string | null;
+  patientAddress: string | null;
+  identifiers: Identifier[];
+  claimId: string | null;
+  denialCodes: string[];
+  denialReasonText: string | null;
+  denialCodeAnalysis: Record<string, string> | null;
+  extractionNotes: ExtractionNotes | null;
+}
+
 export interface AppealLetter {
   letterId: string;
   caseId: string;
@@ -135,6 +185,8 @@ export interface AppealLetter {
     why: string;
     citations: Citation[];
   }>;
+  /** Structured field summary for UI consumption. */
+  parsedFields: ParsedCaseFields;
 }
 
 // ─── Argument Plan ────────────────────────────────────────────────────────────
