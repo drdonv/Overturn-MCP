@@ -1,0 +1,422 @@
+{
+  "letterId": "ltr_1dfbb5572922439b",
+  "caseId": "a1b2c3d4e5f67890",
+  "payerName": "HEALTH INSURANCE COMPANY",
+  "createdAt": "2026-02-21T21:43:33.721Z",
+  "tone": "professional",
+  "sections": [
+    {
+      "id": "header",
+      "title": "Header",
+      "content": "February 21, 2026\n\nJane Doe\n\nHEALTH INSURANCE COMPANY\n123 Benefit Lane | Claims Department\n\nRe: INTERNAL APPEAL — Denial of Claim\nMember Name: Jane Doe\nMember ID: XYZ123456789\nClaim Number: 987654321\nDate of Original Denial Letter: 2026-02-21",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 88,
+          "end": 108,
+          "snippet": "Member Name: Jane Doe",
+          "label": "memberName"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 109,
+          "end": 135,
+          "snippet": "Member ID: XYZ123456789",
+          "label": "memberId"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 136,
+          "end": 161,
+          "snippet": "Claim Number: 987654321",
+          "label": "claimNumber"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 0,
+          "end": 24,
+          "snippet": "HEALTH INSURANCE COMPANY",
+          "label": "payerName"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 62,
+          "end": 87,
+          "snippet": "Date: February 21, 2026",
+          "label": "letterDate"
+        }
+      ]
+    },
+    {
+      "id": "service_details",
+      "title": "Service and Claim Details",
+      "content": "Dear Claims Review Department,\n\nWe are writing to formally appeal the denial of the following service(s) provided by City General Hospital on 2026-01-10:\n\n  • Outpatient Physical Therapy (CPT: 97110) — Billed Amount: USD 450.00 — Status: DENIED\n\nPlease review the complete record and clinical justification presented below.",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 321,
+          "end": 420,
+          "snippet": "Service: Outpatient Physical Therapy (CPT 97110)\nRequested Amount: $450.00\nStatus: DENIED",
+          "label": "services"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 288,
+          "end": 308,
+          "snippet": "January 10, 2026",
+          "label": "serviceDate"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 240,
+          "end": 261,
+          "snippet": "City General Hospital",
+          "label": "providerName"
+        }
+      ]
+    },
+    {
+      "id": "request",
+      "title": "Request for Review",
+      "content": "We respectfully request that you reverse this denial and approve payment for the services rendered for claim number 987654321. We have enclosed all supporting clinical documentation and evidence demonstrating that this service is covered and medically warranted.",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 136,
+          "end": 161,
+          "snippet": "Claim Number: 987654321",
+          "label": "claimNumber"
+        }
+      ]
+    },
+    {
+      "id": "denial_summary",
+      "title": "Summary of Denial Reason",
+      "content": "In your letter dated 2026-02-21, you denied coverage for the above service(s) citing Clinical Policy Bulletin #045 (Physical Therapy Session Limits), stating:\n\n\"Based on the clinical documentation provided, the requested services have been determined to be not medically necessary. Under your Plan's Clinical Policy Bulletin #045, physical therapy for this diagnosis is limited to 12 sessions per calendar year unless significant functional improvement is documented. Our records show you have reached your benefit limit for this period.\"\n\nWe respectfully contest this determination on the grounds set forth below.",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 430,
+          "end": 790,
+          "snippet": "Based on the clinical documentation provided, the requested services have been determined to be not medically necessary. Under your Plan's Clinical Policy Bulletin #045, physical therapy for this diagnosis is limited to 12 sessions per calendar year",
+          "label": "denialReason"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 497,
+          "end": 527,
+          "snippet": "Clinical Policy Bulletin #045",
+          "label": "policyReferences"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 62,
+          "end": 87,
+          "snippet": "Date: February 21, 2026",
+          "label": "letterDate"
+        }
+      ]
+    },
+    {
+      "id": "rebuttal",
+      "title": "Rebuttal and Supporting Arguments",
+      "content": "REBUTTAL — Benefit Limit Exception\n\nYour denial references Clinical Policy Bulletin #045, which limits coverage under standard circumstances.\n\nWe assert that this patient's circumstances warrant an exception for the following reasons:\n\n1. Documented Medical Necessity: The treating provider has determined that continued services are medically necessary. [NEEDS EVIDENCE: PT progress notes documenting current functional status and deficits]\n\n2. Functional Improvement: [NEEDS EVIDENCE: PT progress notes showing functional improvement measurements (e.g., outcome scores, range of motion, pain scale)].\n\n3. Session Count Verification: We request verification of the session count used in this determination. If any sessions were miscounted or improperly attributed, the limit has not been reached. [NEEDS EVIDENCE: payer's session count record for this member and benefit year]\n\nAccordingly, we request that the payer invoke its medical necessity exception process and approve additional sessions as documented by the treating provider.",
+      "citations": [
+        {
+          "kind": "kbChunk",
+          "docId": "kb_policy_cpb045",
+          "start": 0,
+          "end": 817,
+          "snippet": "HEALTH INSURANCE COMPANY CLINICAL POLICY BULLETIN #045 Subject: Physical Therapy — Outpatient Services Effective Date: J",
+          "label": "kb:policy"
+        },
+        {
+          "kind": "kbChunk",
+          "docId": "kb_prior_appeal_pt_001",
+          "start": 0,
+          "end": 892,
+          "snippet": "SAMPLE ACCEPTED APPEAL LETTER — PHYSICAL THERAPY BENEFIT LIMIT [TEMPLATE: Structural reference only — do not copy facts ",
+          "label": "kb:prior_appeal_accepted"
+        },
+        {
+          "kind": "kbChunk",
+          "docId": "kb_prior_appeal_pt_001",
+          "start": 0,
+          "end": 897,
+          "snippet": "d approve payment of $[Amount] for the services rendered, based on the medical necessity exception criteria defined in C",
+          "label": "kb:prior_appeal_accepted"
+        },
+        {
+          "kind": "kbChunk",
+          "docId": "kb_policy_cpb045",
+          "start": 0,
+          "end": 890,
+          "snippet": "e) Skilled intervention is required; the services cannot be performed by the patient or an untrained caregiver.  4. BENE",
+          "label": "kb:policy"
+        }
+      ]
+    },
+    {
+      "id": "attachments",
+      "title": "Enclosed Documentation",
+      "content": "The following documents are enclosed in support of this appeal:\n\n1. Appeal Request Form\n2. Letter from your doctor explaining why the service was necessary\n3. Additional medical records\n4. Physician / provider letter of medical necessity\n5. Functional outcome measures\n6. Completed Appeal Request Form\n7. Copy of original denial letter\n8. Proof of appeal submission",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1010,
+          "end": 1100,
+          "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+          "label": "requiredAttachments"
+        }
+      ]
+    },
+    {
+      "id": "closing",
+      "title": "Closing and Signature",
+      "content": "This appeal is time-sensitive; please process within your standard internal appeal timeline.\n\nWe trust you will give this appeal full and fair consideration. We are available to provide any additional documentation you require.\n\nIf you have any questions, please contact us at 555-867-5309.\n\nSincerely,\n\nJane Doe\nMember / Patient Representative\n\nSubmission method: mail or fax",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 88,
+          "end": 108,
+          "snippet": "Member Name: Jane Doe",
+          "label": "memberName"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 930,
+          "end": 990,
+          "snippet": "You must submit your request in writing within 180 days of receiving this letter.",
+          "label": "appealWindowDays"
+        },
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1050,
+          "end": 1120,
+          "snippet": "Mail or fax your appeal to the address listed at the top of this letter.",
+          "label": "submissionMethods"
+        }
+      ]
+    }
+  ],
+  "fullText": "February 21, 2026\n\nJane Doe\n\nHEALTH INSURANCE COMPANY\n123 Benefit Lane | Claims Department\n\nRe: INTERNAL APPEAL — Denial of Claim\nMember Name: Jane Doe\nMember ID: XYZ123456789\nClaim Number: 987654321\nDate of Original Denial Letter: 2026-02-21\n[CITE:denialCaseSpan:doc_sample_denial:88-108] [CITE:denialCaseSpan:doc_sample_denial:109-135] [CITE:denialCaseSpan:doc_sample_denial:136-161] [CITE:denialCaseSpan:doc_sample_denial:0-24] [CITE:denialCaseSpan:doc_sample_denial:62-87]\n\n────────────────────────────────────────\n\nDear Claims Review Department,\n\nWe are writing to formally appeal the denial of the following service(s) provided by City General Hospital on 2026-01-10:\n\n  • Outpatient Physical Therapy (CPT: 97110) — Billed Amount: USD 450.00 — Status: DENIED\n\nPlease review the complete record and clinical justification presented below.\n[CITE:denialCaseSpan:doc_sample_denial:321-420] [CITE:denialCaseSpan:doc_sample_denial:288-308] [CITE:denialCaseSpan:doc_sample_denial:240-261]\n\n────────────────────────────────────────\n\nWe respectfully request that you reverse this denial and approve payment for the services rendered for claim number 987654321. We have enclosed all supporting clinical documentation and evidence demonstrating that this service is covered and medically warranted.\n[CITE:denialCaseSpan:doc_sample_denial:136-161]\n\n────────────────────────────────────────\n\nIn your letter dated 2026-02-21, you denied coverage for the above service(s) citing Clinical Policy Bulletin #045 (Physical Therapy Session Limits), stating:\n\n\"Based on the clinical documentation provided, the requested services have been determined to be not medically necessary. Under your Plan's Clinical Policy Bulletin #045, physical therapy for this diagnosis is limited to 12 sessions per calendar year unless significant functional improvement is documented. Our records show you have reached your benefit limit for this period.\"\n\nWe respectfully contest this determination on the grounds set forth below.\n[CITE:denialCaseSpan:doc_sample_denial:430-790] [CITE:denialCaseSpan:doc_sample_denial:497-527] [CITE:denialCaseSpan:doc_sample_denial:62-87]\n\n────────────────────────────────────────\n\nREBUTTAL — Benefit Limit Exception\n\nYour denial references Clinical Policy Bulletin #045, which limits coverage under standard circumstances.\n\nWe assert that this patient's circumstances warrant an exception for the following reasons:\n\n1. Documented Medical Necessity: The treating provider has determined that continued services are medically necessary. [NEEDS EVIDENCE: PT progress notes documenting current functional status and deficits]\n\n2. Functional Improvement: [NEEDS EVIDENCE: PT progress notes showing functional improvement measurements (e.g., outcome scores, range of motion, pain scale)].\n\n3. Session Count Verification: We request verification of the session count used in this determination. If any sessions were miscounted or improperly attributed, the limit has not been reached. [NEEDS EVIDENCE: payer's session count record for this member and benefit year]\n\nAccordingly, we request that the payer invoke its medical necessity exception process and approve additional sessions as documented by the treating provider.\n[CITE:kbChunk:kb_policy_cpb045:0-817] [CITE:kbChunk:kb_prior_appeal_pt_001:0-892] [CITE:kbChunk:kb_prior_appeal_pt_001:0-897] [CITE:kbChunk:kb_policy_cpb045:0-890]\n\n────────────────────────────────────────\n\nThe following documents are enclosed in support of this appeal:\n\n1. Appeal Request Form\n2. Letter from your doctor explaining why the service was necessary\n3. Additional medical records\n4. Physician / provider letter of medical necessity\n5. Functional outcome measures\n6. Completed Appeal Request Form\n7. Copy of original denial letter\n8. Proof of appeal submission\n[CITE:denialCaseSpan:doc_sample_denial:1010-1100]\n\n────────────────────────────────────────\n\nThis appeal is time-sensitive; please process within your standard internal appeal timeline.\n\nWe trust you will give this appeal full and fair consideration. We are available to provide any additional documentation you require.\n\nIf you have any questions, please contact us at 555-867-5309.\n\nSincerely,\n\nJane Doe\nMember / Patient Representative\n\nSubmission method: mail or fax\n[CITE:denialCaseSpan:doc_sample_denial:88-108] [CITE:denialCaseSpan:doc_sample_denial:930-990] [CITE:denialCaseSpan:doc_sample_denial:1050-1120]",
+  "attachmentChecklist": [
+    {
+      "item": "Completed Appeal Request Form",
+      "required": true,
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1010,
+          "end": 1100,
+          "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+          "label": "requiredAttachments"
+        }
+      ]
+    },
+    {
+      "item": "Copy of original denial letter",
+      "required": true,
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1010,
+          "end": 1100,
+          "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+          "label": "requiredAttachments"
+        }
+      ]
+    },
+    {
+      "item": "Physician / provider letter of medical necessity",
+      "required": true,
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1010,
+          "end": 1100,
+          "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+          "label": "requiredAttachments"
+        }
+      ]
+    },
+    {
+      "item": "Appeal Request Form",
+      "required": true,
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1010,
+          "end": 1100,
+          "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+          "label": "requiredAttachments"
+        }
+      ]
+    },
+    {
+      "item": "Letter from your doctor explaining why the service was necessary",
+      "required": true,
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1010,
+          "end": 1100,
+          "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+          "label": "requiredAttachments"
+        }
+      ]
+    },
+    {
+      "item": "Additional medical records",
+      "required": true,
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1010,
+          "end": 1100,
+          "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+          "label": "requiredAttachments"
+        }
+      ]
+    },
+    {
+      "item": "PT/clinical progress notes for all sessions",
+      "required": true,
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1010,
+          "end": 1100,
+          "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+          "label": "requiredAttachments"
+        }
+      ]
+    },
+    {
+      "item": "Functional outcome measurement scores",
+      "required": true,
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1010,
+          "end": 1100,
+          "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+          "label": "requiredAttachments"
+        }
+      ]
+    },
+    {
+      "item": "Treatment plan (initial and current)",
+      "required": false,
+      "citations": []
+    },
+    {
+      "item": "Proof of submission (certified mail receipt / fax confirmation)",
+      "required": false,
+      "citations": []
+    }
+  ],
+  "missingEvidence": [
+    "PT progress notes documenting current functional status and deficits",
+    "PT progress notes showing functional improvement measurements (e.g., outcome scores, range of motion, pain scale)",
+    "payer's session count record for this member and benefit year"
+  ],
+  "actionItems": [
+    {
+      "priority": "p0",
+      "action": "Confirm and calendar the appeal deadline: 180 days from the denial letter date. File before this date to preserve your rights.",
+      "why": "Missing the appeal deadline permanently waives your right to an internal appeal.",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 930,
+          "end": 990,
+          "snippet": "You must submit your request in writing within 180 days of receiving this letter.",
+          "label": "appealWindowDays"
+        }
+      ]
+    },
+    {
+      "priority": "p0",
+      "action": "Contact provider to obtain: (1) progress notes for all sessions, (2) functional outcome measures, (3) physician letter of medical necessity. These are your strongest evidence.",
+      "why": "Benefit limit exceptions require documented functional improvement and clinical necessity.",
+      "citations": []
+    },
+    {
+      "priority": "p1",
+      "action": "Request a physician letter of medical necessity addressing the specific denial reason, functional deficits, and why additional services are warranted.",
+      "why": "A physician's direct attestation carries significant weight in the clinical review process.",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 430,
+          "end": 790,
+          "snippet": "Based on the clinical documentation provided, the requested services have been determined to be not medically necessary. Under your Plan's Clinical Policy Bulletin #045, physical therapy for this diagnosis is limited to 12 sessions per calendar year",
+          "label": "denialReason"
+        }
+      ]
+    },
+    {
+      "priority": "p1",
+      "action": "Review retrieved policy excerpts for Clinical Policy Bulletin #045 and ensure your clinical documentation satisfies every listed criterion.",
+      "why": "Rebutting a policy-specific denial requires demonstrating compliance with that exact policy's criteria.",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 497,
+          "end": 527,
+          "snippet": "Clinical Policy Bulletin #045",
+          "label": "policyReferences"
+        }
+      ]
+    },
+    {
+      "priority": "p2",
+      "action": "Submit appeal via mail or fax and obtain proof of submission (certified mail receipt, fax confirmation, or portal upload confirmation).",
+      "why": "Proof of timely submission protects you if the payer claims non-receipt.",
+      "citations": [
+        {
+          "kind": "denialCaseSpan",
+          "docId": "doc_sample_denial",
+          "start": 1050,
+          "end": 1120,
+          "snippet": "Mail or fax your appeal to the address listed at the top of this letter.",
+          "label": "submissionMethods"
+        }
+      ]
+    },
+    {
+      "priority": "p2",
+      "action": "Resolve missing evidence items before submission: PT progress notes documenting current functional status and deficits; PT progress notes showing functional improvement measurements (e.g., outcome scores, range of motion, pain scale); payer's session count record for this member and benefit year.",
+      "why": "NEEDS EVIDENCE placeholders in the letter indicate gaps that weaken the appeal.",
+      "citations": []
+    }
+  ]
+}

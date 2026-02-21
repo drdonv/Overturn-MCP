@@ -1,0 +1,252 @@
+{
+  "caseId": "a1b2c3d4e5f67890",
+  "payerName": {
+    "value": "HEALTH INSURANCE COMPANY",
+    "confidence": 0.98,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 0,
+        "end": 24,
+        "snippet": "HEALTH INSURANCE COMPANY",
+        "label": "payerName"
+      }
+    ]
+  },
+  "payerAddress": {
+    "value": "123 Benefit Lane | Claims Department",
+    "confidence": 0.9,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 25,
+        "end": 61,
+        "snippet": "123 Benefit Lane | Claims Department",
+        "label": "payerAddress"
+      }
+    ]
+  },
+  "letterDate": {
+    "value": "2026-02-21",
+    "confidence": 0.97,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 62,
+        "end": 87,
+        "snippet": "Date: February 21, 2026",
+        "label": "letterDate"
+      }
+    ]
+  },
+  "memberName": {
+    "value": "Jane Doe",
+    "confidence": 0.99,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 88,
+        "end": 108,
+        "snippet": "Member Name: Jane Doe",
+        "label": "memberName"
+      }
+    ]
+  },
+  "memberId": {
+    "value": "XYZ123456789",
+    "confidence": 0.99,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 109,
+        "end": 135,
+        "snippet": "Member ID: XYZ123456789",
+        "label": "memberId"
+      }
+    ]
+  },
+  "claimNumber": {
+    "value": "987654321",
+    "confidence": 0.99,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 136,
+        "end": 161,
+        "snippet": "Claim Number: 987654321",
+        "label": "claimNumber"
+      }
+    ]
+  },
+  "providerName": {
+    "value": "City General Hospital",
+    "confidence": 0.95,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 240,
+        "end": 261,
+        "snippet": "City General Hospital",
+        "label": "providerName"
+      }
+    ]
+  },
+  "serviceDate": {
+    "value": "2026-01-10",
+    "confidence": 0.97,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 288,
+        "end": 308,
+        "snippet": "January 10, 2026",
+        "label": "serviceDate"
+      }
+    ]
+  },
+  "services": {
+    "value": [
+      {
+        "serviceName": "Outpatient Physical Therapy",
+        "cptCodes": ["97110"],
+        "amountRequested": 450.0,
+        "currency": "USD",
+        "status": "DENIED"
+      }
+    ],
+    "confidence": 0.97,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 321,
+        "end": 420,
+        "snippet": "Service: Outpatient Physical Therapy (CPT 97110)\nRequested Amount: $450.00\nStatus: DENIED",
+        "label": "services"
+      }
+    ]
+  },
+  "denialCategory": {
+    "value": "benefit_limit",
+    "confidence": 0.93,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 430,
+        "end": 620,
+        "snippet": "physical therapy for this diagnosis is limited to 12 sessions per calendar year unless significant functional improvement is documented. Our records show you have reached your benefit limit",
+        "label": "denialCategory"
+      }
+    ]
+  },
+  "denialReasonSummary": {
+    "value": "Based on the clinical documentation provided, the requested services have been determined to be not medically necessary. Under your Plan's Clinical Policy Bulletin #045, physical therapy for this diagnosis is limited to 12 sessions per calendar year unless significant functional improvement is documented. Our records show you have reached your benefit limit for this period.",
+    "confidence": 0.96,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 430,
+        "end": 790,
+        "snippet": "Based on the clinical documentation provided, the requested services have been determined to be not medically necessary. Under your Plan's Clinical Policy Bulletin #045, physical therapy for this diagnosis is limited to 12 sessions per calendar year",
+        "label": "denialReasonSummary"
+      }
+    ]
+  },
+  "policyReferences": {
+    "value": [
+      {
+        "policyId": "Clinical Policy Bulletin #045",
+        "title": "Physical Therapy Session Limits"
+      }
+    ],
+    "confidence": 0.95,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 497,
+        "end": 527,
+        "snippet": "Clinical Policy Bulletin #045",
+        "label": "policyReferences"
+      }
+    ]
+  },
+  "patientResponsibilityAmount": {
+    "value": 450.0,
+    "confidence": 0.98,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 820,
+        "end": 880,
+        "snippet": "The total amount you may owe the provider is: $450.00",
+        "label": "patientResponsibilityAmount"
+      }
+    ]
+  },
+  "appealWindowDays": {
+    "value": 180,
+    "confidence": 0.99,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 930,
+        "end": 990,
+        "snippet": "You must submit your request in writing within 180 days of receiving this letter.",
+        "label": "appealWindowDays"
+      }
+    ]
+  },
+  "appealSubmissionMethods": {
+    "value": ["mail", "fax"],
+    "confidence": 0.88,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 1050,
+        "end": 1120,
+        "snippet": "Mail or fax your appeal to the address listed at the top of this letter.",
+        "label": "appealSubmissionMethods"
+      }
+    ]
+  },
+  "appealInstructions": {
+    "value": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary. Mail or fax your appeal to the address listed at the top of this letter.",
+    "confidence": 0.95,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 1010,
+        "end": 1120,
+        "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor",
+        "label": "appealInstructions"
+      }
+    ]
+  },
+  "requiredAttachments": {
+    "value": [
+      "Appeal Request Form",
+      "Letter from your doctor explaining why the service was necessary",
+      "Additional medical records"
+    ],
+    "confidence": 0.93,
+    "spans": [
+      {
+        "docId": "doc_sample_denial",
+        "start": 1010,
+        "end": 1100,
+        "snippet": "Complete the enclosed Appeal Request Form. Attach any additional records or a letter from your doctor explaining why the service was necessary.",
+        "label": "requiredAttachments"
+      }
+    ]
+  },
+  "missingInformation": {
+    "value": [],
+    "confidence": 1.0,
+    "spans": []
+  },
+  "rawText": "HEALTH INSURANCE COMPANY\n123 Benefit Lane | Claims Department\nDate: February 21, 2026 Member Name: Jane Doe Member ID: XYZ123456789 Claim Number: 987654321\nNOTICE OF DENIAL OF MEDICAL COVERAGE\nDear Jane Doe,\nWe have reviewed the claim submitted by City General Hospital for services provided on January 10, 2026. At this time, we are unable to provide payment for the following service(s):\nService: Outpatient Physical Therapy (CPT 97110)\nRequested Amount: $450.00\nStatus: DENIED\nReason for our decision:\nMedical Necessity Review. Based on the clinical documentation provided, the requested services have been determined to be not medically necessary. Under your Plan's Clinical Policy Bulletin #045, physical therapy for this diagnosis is limited to 12 sessions per calendar year unless significant functional improvement is documented. Our records show you have reached your benefit limit for this period.\nWhat this means for you:\nYou are responsible for the cost of this service unless you choose to appeal this decision. The total amount you may owe the provider is: $450.00.\nYour Right to Appeal\nIf you disagree with this decision, you have the right to an internal appeal. You must submit your request in writing within 180 days of receiving this letter.\nHow to appeal:\nComplete the enclosed Appeal Request Form.\nAttach any additional records or a letter from your doctor explaining why the service was necessary.\nMail or fax your appeal to the address listed at the top of this letter.",
+  "docMeta": {
+    "docId": "doc_sample_denial",
+    "filename": "denial_letter_jane_doe.txt",
+    "mimeType": "text/plain"
+  }
+}

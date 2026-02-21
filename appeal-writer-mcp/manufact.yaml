@@ -1,0 +1,42 @@
+name: appeal-writer-mcp
+version: 1.0.0
+description: "Production-ready MCP server for generating grounded medical claim appeal letters with zero-hallucination RAG"
+runtime: node18
+entry: dist/index.js
+transport: stdio
+
+# Build step runs before deployment
+build:
+  command: npm ci && npm run build
+
+# Environment variables (non-secret)
+env:
+  LOG_LEVEL: info
+  MAX_FILE_MB: "20"
+  ENABLE_OCR_DEFAULT: "false"
+  USE_EMBEDDINGS: "false"
+  OPENAI_MODEL: gpt-4o
+  # STORAGE_PATH is set by the volume mount below
+  STORAGE_PATH: /data/appeal-writer
+
+# Persistent volume for SQLite knowledge base
+volumes:
+  - mountPath: /data/appeal-writer
+    name: appeal-writer-kb
+
+# Secret environment variables (set via Manufact dashboard or CLI)
+secrets:
+  - OPENAI_API_KEY  # optional: enables LLM generation + dense embeddings
+
+# Tools exposed by this MCP server
+tools:
+  - name: kb.ingest
+    description: "Ingest PDF, DOCX, or TXT documents into the RAG knowledge base"
+  - name: kb.search
+    description: "Search the knowledge base for relevant chunks"
+  - name: appeal.plan
+    description: "Generate an argument plan and evidence gap analysis for a denial case"
+  - name: appeal.generate
+    description: "Generate a complete grounded appeal letter with citations and action items"
+  - name: appeal.generateFromCaseId
+    description: "Generate appeal from a previously saved case ID"

@@ -1,0 +1,65 @@
+HEALTH INSURANCE COMPANY
+CLINICAL POLICY BULLETIN #045
+Subject: Physical Therapy — Outpatient Services
+Effective Date: January 1, 2025
+Revision Date: July 1, 2025
+
+1. OVERVIEW
+
+This Clinical Policy Bulletin (CPB) governs coverage determinations for outpatient physical therapy (PT) services under the Health Insurance Company Standard and Premium benefit plans. Coverage is subject to the member's plan documents, including any applicable benefit limits, and the criteria set forth below.
+
+2. COVERED SERVICES
+
+The following physical therapy procedure codes are covered when criteria are met:
+  - CPT 97110: Therapeutic Exercise
+  - CPT 97530: Therapeutic Activities
+  - CPT 97012: Mechanical Traction
+  - CPT 97140: Manual Therapy Techniques
+  - CPT 97150: Therapeutic Procedure, Group
+
+3. MEDICAL NECESSITY CRITERIA
+
+Outpatient physical therapy is considered medically necessary when ALL of the following criteria are met:
+
+  a) The condition being treated is the result of an injury, illness, or surgery that has caused a functional deficit or impairment.
+  b) The treatment is directed by a qualified licensed physical therapist.
+  c) The patient demonstrates measurable functional improvement between sessions as documented by objective standardized outcome measures.
+  d) The treatment plan includes specific, achievable, and time-limited goals tied to functional outcomes.
+  e) Skilled intervention is required; the services cannot be performed by the patient or an untrained caregiver.
+
+4. BENEFIT LIMITS AND EXCEPTIONS
+
+Standard Plans: Coverage is limited to 12 sessions per calendar year for outpatient physical therapy.
+
+Premium Plans: Coverage is limited to 24 sessions per calendar year.
+
+EXCEPTION CRITERIA — Medical Necessity Override:
+Coverage beyond the standard session limit may be approved when ALL of the following are documented:
+
+  i)   The treating provider submits clinical documentation demonstrating significant, measurable functional improvement (minimum 20% improvement on a validated outcome measure such as FOTO, Oswestry Disability Index, or similar).
+  ii)  A physician letter of medical necessity is provided attesting that continued PT is clinically indicated and that goals have not yet been achieved.
+  iii) The treatment plan has been updated to reflect current functional status, revised goals, and estimated sessions required to achieve maximum medical improvement.
+  iv)  There is no evidence that the patient has plateaued; objective progress must be documented in clinical notes for each session.
+
+5. SESSION COUNT METHODOLOGY
+
+Sessions are counted per calendar year (January 1 – December 31). Sessions authorized or provided by any in-network or out-of-network provider for the same benefit category count toward the annual limit. Members or providers may request a session count audit by submitting a written request to the Claims Department.
+
+6. DOCUMENTATION REQUIREMENTS FOR APPEALS
+
+Appeals of denials under this CPB must include:
+  - Complete PT progress notes for all treatment sessions within the benefit year
+  - Initial evaluation with baseline functional measurements
+  - Updated evaluation with current functional measurements using standardized tools
+  - Physician attestation of medical necessity
+  - Updated plan of care
+
+7. REGULATORY COMPLIANCE
+
+This policy is designed to comply with applicable state and federal parity laws. Members who believe a denial violates mental health parity or other federal requirements should contact the Plan's Compliance Department.
+
+8. APPEAL RIGHTS
+
+Denials issued under this CPB are subject to the Plan's standard internal and external appeal process. Internal appeals must be submitted within 180 days of the denial. External Independent Medical Review is available following exhaustion of internal appeals.
+
+For questions, contact the Clinical Policy team at clinicalpolicy@healthinsurancecompany.example.

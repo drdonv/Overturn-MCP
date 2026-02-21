@@ -1,0 +1,73 @@
+SAMPLE ACCEPTED APPEAL LETTER — PHYSICAL THERAPY BENEFIT LIMIT
+[TEMPLATE: Structural reference only — do not copy facts verbatim]
+
+---
+
+[Date]
+
+[Payer Name]
+[Claims Department Address]
+
+Re: Internal Appeal — Denial of Physical Therapy
+Member Name: [Member Name]
+Member ID: [Member ID]
+Claim Number: [Claim Number]
+Date of Service: [Date of Service]
+Denial Letter Date: [Denial Date]
+
+Dear Claims Review Department,
+
+I am writing to appeal the denial of outpatient physical therapy services (CPT [Code]) provided by [Provider Name] on [Date]. Your denial letter dated [Date] cited Clinical Policy Bulletin #045 and stated that the member's annual session limit had been reached.
+
+REQUEST
+
+We respectfully request that you reverse this denial and approve payment of $[Amount] for the services rendered, based on the medical necessity exception criteria defined in Clinical Policy Bulletin #045, Section 4.
+
+REBUTTAL — MEDICAL NECESSITY EXCEPTION APPLIES
+
+1. Documented Functional Improvement
+
+The attached progress notes demonstrate measurable functional improvement across the treatment period:
+  - Initial Evaluation ([Date]): Oswestry Disability Index score of [X]% (severe disability)
+  - Re-evaluation ([Date]): Oswestry Disability Index score of [Y]% (moderate disability)
+  - This represents a [Z]% improvement, exceeding the Plan's 20% threshold for medical necessity exception.
+
+2. Physician Attestation of Medical Necessity
+
+Enclosed is a letter from [Physician Name], MD ([Specialty]), dated [Date], attesting that:
+  - Continued physical therapy is clinically necessary for [Diagnosis/ICD Code]
+  - The patient has not yet reached maximum medical improvement
+  - Functional goals have been revised and are achievable with continued intervention
+
+3. Session Count Verification
+
+We request confirmation that the session count used in this determination is accurate. According to our records, [Number] sessions have been provided by [Provider] in the current calendar year. If any sessions were improperly attributed, the benefit limit has not been met.
+
+4. Plan of Care Update
+
+An updated plan of care is enclosed, including revised functional goals, estimated number of sessions required ([Number]), and anticipated discharge criteria.
+
+ATTACHMENTS
+
+1. Completed Appeal Request Form
+2. Progress notes for all sessions ([Date range])
+3. Initial and updated functional evaluation with Oswestry scores
+4. Physician letter of medical necessity ([Physician Name], [Date])
+5. Updated plan of care
+6. Copy of original denial letter
+
+We are confident that the enclosed documentation satisfies all criteria under Clinical Policy Bulletin #045, Section 4 for a medical necessity exception. We respectfully request expedited review given the patient's active treatment needs.
+
+Please contact us if additional information is required.
+
+Sincerely,
+
+[Member Name / Authorized Representative]
+[Contact Information]
+
+---
+OUTCOME NOTE: This appeal structure was accepted. Key success factors:
+  - Quantified functional improvement with standardized outcome measure
+  - Physician letter directly addressed the policy criteria
+  - Session count audit was requested, reducing apparent total
+  - Updated plan of care demonstrated clear discharge endpoint

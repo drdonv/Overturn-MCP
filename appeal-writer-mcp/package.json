@@ -1,0 +1,47 @@
+{
+  "name": "appeal-writer-mcp",
+  "version": "1.0.0",
+  "description": "Production-ready MCP server for generating grounded medical claim appeal letters",
+  "main": "dist/index.js",
+  "bin": {
+    "appeal-writer-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "mcp-use": "mcp-use"
+  },
+  "keywords": [
+    "mcp",
+    "healthcare",
+    "insurance",
+    "appeal",
+    "rag",
+    "manufact"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "better-sqlite3": "^9.6.0",
+    "mammoth": "^1.8.0",
+    "openai": "^4.77.0",
+    "pdf-parse": "^1.1.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "@types/pdf-parse": "^1.1.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
