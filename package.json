@@ -1,0 +1,11 @@
+{
+  "name": "overturn-mcp-monorepo-root",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root deploy shim for Overturn MCP subproject",
+  "scripts": {
+    "build": "npm --prefix Overturn install && npm --prefix Overturn run build",
+    "start": "npm --prefix Overturn run start",
+    "deploy:overturn": "npm --prefix Overturn run deploy"
+  }
+}
