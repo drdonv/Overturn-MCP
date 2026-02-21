@@ -3,7 +3,7 @@
  *
  * Works in two modes:
  *  1. Template mode (default): fills structured sections from DenialCase + KB evidence.
- *  2. LLM mode (OPENAI_API_KEY set): uses GPT-4o with strict grounding prompt,
+ *  2. LLM mode (ANTHROPIC_API_KEY set): uses Claude with strict grounding prompt + RAG,
  *     then verifies citations.
  *
  * Every factual claim MUST be backed by a Citation (denialCaseSpan or kbChunk).
@@ -55,7 +55,6 @@ function chunkToCitation(chunk: RetrievedChunk, label: string): Citation {
   };
 }
 
-/** Inline citation tag for fullText. */
 function inlineTag(citation: Citation): string {
   return `[CITE:${citation.kind}:${citation.docId}:${citation.start}-${citation.end}]`;
 }
@@ -68,23 +67,44 @@ function spans(field: { spans: SourceSpan[] }): SourceSpan[] {
   return field.spans;
 }
 
-// ─── Section Builders ──────────────────────────────────────────────────────
+// ─── Resolve helper: pull values from DenialCase with fallbacks ─────────
+
+function resolveFields(dc: DenialCase, userContext: UserContext) {
+  const patientName = dc.patient_name ?? val(dc.memberName) ?? "[Patient Name]";
+  const patientAddress = dc.patient_address ?? userContext.patientAddress ?? "[Patient Address]";
+  const claimId = dc.claim_id ?? val(dc.claimNumber) ?? "[Claim ID]";
+  const memberId = val(dc.memberId) ?? "[Member ID]";
+  const payerName = userContext.insuranceCompanyName ?? val(dc.payerName) ?? "[Insurance Company Name]";
+  const payerAddress = userContext.insuranceCompanyAddress ?? val(dc.payerAddress) ?? "[Insurance Company Address]";
+  const denialReasonText = dc.denial_reason_text ?? val(dc.denialReasonSummary) ?? "[Denial reason not extracted]";
+  const denialCodes = dc.denial_codes ?? [];
+  const denialCodeAnalysis = dc.denial_code_analysis ?? {};
+  const identifiers: Identifier[] = dc.identifiers ?? (
+    val(dc.memberId) ? [{ label: "Member ID", value: val(dc.memberId)! }] : []
+  );
+  const letterDate = val(dc.letterDate) ?? "[Date of Denial]";
+  const phone = userContext.patientPhone ?? "[Phone Number]";
+  const email = userContext.patientEmail ?? "[Email Address]";
+  const extractionNotes = dc.extraction_notes ?? null;
+
+  return {
+    patientName, patientAddress, claimId, memberId, payerName, payerAddress,
+    denialReasonText, denialCodes, denialCodeAnalysis, identifiers, letterDate,
+    phone, email, extractionNotes,
+  };
+}
+
+// ─── Section Builders (following user's appeal letter template) ─────────
 
 function buildHeaderSection(
   dc: DenialCase,
   userContext: UserContext,
-  opts: GenerateOptions
+  _opts: GenerateOptions
 ): LetterSection {
+  const f = resolveFields(dc, userContext);
   const today = new Date().toLocaleDateString("en-US", {
     year: "numeric", month: "long", day: "numeric",
   });
-  const letterDate = val(dc.letterDate) ?? today;
-  // Prefer new patient_name field, fall back to memberName.value
-  const memberName = dc.patient_name ?? val(dc.memberName) ?? "[Member Name]";
-  // Prefer new claim_id field, fall back to claimNumber.value
-  const claimNumber = dc.claim_id ?? val(dc.claimNumber) ?? "[Claim Number]";
-  const payer = val(dc.payerName) ?? "[Payer Name]";
-  const payerAddr = val(dc.payerAddress) ?? "[Payer Address]";
 
   const citations: Citation[] = [
     ...spans(dc.memberName).map((s) => spanToCitation(s, "memberName")),
@@ -94,259 +114,174 @@ function buildHeaderSection(
     ...spans(dc.letterDate).map((s) => spanToCitation(s, "letterDate")),
   ];
 
-  // Build identifier lines from the new identifiers array
-  const identifierLines = (dc.identifiers ?? [])
-    .map((id) => `${id.label}: ${id.value}`)
+  const identifierLines = f.identifiers
+    .map((id) => `- ${id.label}: ${id.value}`)
     .join("\n");
-
-  // Prefer new patient_address, then userContext, then nothing
-  const resolvedAddress = dc.patient_address ?? userContext.patientAddress ?? null;
-  const patientBlock = resolvedAddress
-    ? `${memberName}\n${resolvedAddress}\n${userContext.patientPhone ?? ""}\n\n`
-    : `${memberName}\n\n`;
-
-  // Primary member ID: prefer identifiers lookup, then memberId.value
-  const primaryId =
-    (dc.identifiers ?? []).find(
-      (id) => /member\s*id/i.test(id.label) || /subscriber\s*id/i.test(id.label)
-    )?.value ?? val(dc.memberId) ?? "[Member ID]";
 
   const content = `${today}
 
-${patientBlock}${payer}
-${payerAddr}
+${f.payerName}
+Appeals and Grievances Department
+${f.payerAddress}
 
-Re: INTERNAL APPEAL — Denial of Claim
-Member Name: ${memberName}
-Member ID: ${primaryId}
-Claim Number: ${claimNumber}
-Date of Original Denial Letter: ${letterDate}${identifierLines ? `\n\nAdditional Identifiers:\n${identifierLines}` : ""}`;
+RE: Appeal of Denied Claim
+Patient Name: ${f.patientName}
+Patient Address: ${f.patientAddress}
+Claim ID: ${f.claimId}
+
+Identifiers:
+${identifierLines || "- Member ID: " + f.memberId}`;
 
   return { id: "header", title: "Header", content, citations };
 }
 
-function buildServiceDetailsSection(
+function buildOpeningSection(
   dc: DenialCase,
-  opts: GenerateOptions
+  userContext: UserContext
 ): LetterSection {
-  const services = val(dc.services) ?? [];
-  const serviceDate = val(dc.serviceDate) ?? "[Date of Service]";
-  const provider = val(dc.providerName) ?? "[Provider Name]";
-  const citations: Citation[] = [
-    ...spans(dc.services).map((s) => spanToCitation(s, "services")),
-    ...spans(dc.serviceDate).map((s) => spanToCitation(s, "serviceDate")),
-    ...spans(dc.providerName).map((s) => spanToCitation(s, "providerName")),
-  ];
-
-  const serviceLines = services.map((svc) => {
-    const cpts = svc.cptCodes.length > 0 ? ` (CPT: ${svc.cptCodes.join(", ")})` : "";
-    const amount =
-      svc.amountRequested !== null
-        ? ` — Billed Amount: ${svc.currency} ${svc.amountRequested.toFixed(2)}`
-        : "";
-    return `  • ${svc.serviceName}${cpts}${amount} — Status: ${svc.status}`;
-  }).join("\n");
-
-  // Reference ID for the service section (prefer claim_id)
-  const refId = dc.claim_id ?? val(dc.claimNumber);
-  const refNote = refId ? ` (Claim #${refId})` : "";
-
-  const providerNote = val(dc.providerName)
-    ? `provided by ${provider}`
-    : "[NEEDS EVIDENCE: provider name not found — obtain from claim or EOB]";
-
-  const content = `Dear Claims Review Department,
-
-We are writing to formally appeal the denial of the following service(s) ${providerNote} on ${serviceDate}${refNote}:
-
-${serviceLines || "  • [NEEDS EVIDENCE: service details not extracted from denial letter]"}
-
-Please review the complete record and clinical justification presented below.`;
-
-  return { id: "service_details", title: "Service and Claim Details", content, citations };
-}
-
-function buildRequestSection(dc: DenialCase, userContext: UserContext): LetterSection {
-  const claimNumber = dc.claim_id ?? val(dc.claimNumber) ?? "[Claim Number]";
-  const outcome = userContext.requestedOutcome ?? "pay_claim";
-  const outcomeText =
-    {
-      pay_claim: "reverse this denial and approve payment for the services rendered",
-      approve_service: "approve authorization for the requested service",
-      reprocess: "reprocess this claim and issue correct payment",
-      reduce_patient_resp: "reduce the patient financial responsibility to the correct contracted rate",
-      other: "reconsider this claim in light of the evidence provided",
-    }[outcome] ?? "reverse this denial";
-
+  const f = resolveFields(dc, userContext);
   const citations: Citation[] = [
     ...spans(dc.claimNumber).map((s) => spanToCitation(s, "claimNumber")),
+    ...spans(dc.denialReasonSummary).map((s) => spanToCitation(s, "denialReason")),
   ];
 
-  const content = `We respectfully request that you ${outcomeText} for claim number ${claimNumber}. We have enclosed all supporting clinical documentation and evidence demonstrating that this service is covered and medically warranted.`;
+  const content = `To Whom It May Concern:
 
-  return { id: "request", title: "Request for Review", content, citations };
+I am writing to formally appeal the denial of coverage for the above-referenced claim.
+
+According to the Explanation of Benefits, this claim (Claim ID: ${f.claimId}) was denied for the following reason(s):`;
+
+  return { id: "opening", title: "Opening Statement", content, citations };
 }
 
-function buildDenialSummarySection(
+function buildDenialCodesSection(
   dc: DenialCase,
   chunks: RetrievedChunk[]
 ): LetterSection {
-  // Prefer verbatim denial_reason_text, fall back to denialReasonSummary
-  const denialReason =
-    dc.denial_reason_text ?? val(dc.denialReasonSummary) ?? "[Denial reason not extracted]";
-  const letterDate = val(dc.letterDate) ?? "[date]";
-  const policyRefs = val(dc.policyReferences) ?? [];
+  const denialCodes = dc.denial_codes ?? [];
+  const denialReasonText = dc.denial_reason_text ?? val(dc.denialReasonSummary) ?? "[Denial reason not extracted]";
+  const denialCodeAnalysis = dc.denial_code_analysis ?? {};
+
   const citations: Citation[] = [
     ...spans(dc.denialReasonSummary).map((s) => spanToCitation(s, "denialReason")),
-    ...spans(dc.policyReferences).map((s) => spanToCitation(s, "policyReferences")),
-    ...spans(dc.letterDate).map((s) => spanToCitation(s, "letterDate")),
   ];
 
-  const policyStr =
-    policyRefs.length > 0
-      ? ` citing ${policyRefs.map((p) => p.policyId + (p.title ? ` (${p.title})` : "")).join(", ")}`
-      : "";
-
-  // Include denial codes block if available
-  const denialCodes = dc.denial_codes ?? [];
-  const denialCodeAnalysis = dc.denial_code_analysis ?? null;
-  let codesBlock = "";
-  if (denialCodes.length > 0) {
-    const codeLines = denialCodes
-      .map((code) => {
-        const explanation = denialCodeAnalysis?.[code];
-        return explanation ? `  • ${code}: ${explanation}` : `  • ${code}`;
-      })
-      .join("\n");
-    codesBlock = `\n\nDenial Code(s):\n${codeLines}`;
+  // Add KB citations for denial code context
+  const codeChunks = chunks
+    .filter((c) => c.meta.docType === "policy" || c.meta.docType === "benefits")
+    .slice(0, 3);
+  for (const chunk of codeChunks) {
+    citations.push(chunkToCitation(chunk, `kb:${chunk.meta.docType}`));
   }
 
-  const content = `In your letter dated ${letterDate}, you denied coverage for the above service(s)${policyStr}, stating:
+  const codeLines = denialCodes.length > 0
+    ? denialCodes.map((code) => `- ${code}`).join("\n")
+    : "- [No denial codes extracted]";
 
-"${denialReason}"${codesBlock}
+  const analysisLines = Object.keys(denialCodeAnalysis).length > 0
+    ? Object.entries(denialCodeAnalysis).map(([code, explanation]) => `- ${code}: ${explanation}`).join("\n")
+    : denialCodes.length > 0
+      ? denialCodes.map((code) => `- ${code}: [NEEDS EVIDENCE: human-readable interpretation for this code]`).join("\n")
+      : "- [No denial code analysis available]";
 
-We respectfully contest this determination on the grounds set forth below.`;
+  const content = `Denial Codes:
+${codeLines}
 
-  return {
-    id: "denial_summary",
-    title: "Summary of Denial Reason",
-    content,
-    citations,
-  };
+Denial Reason as Stated:
+"${denialReasonText}"
+
+Denial Code Analysis (Human-Readable Interpretation):
+${analysisLines}`;
+
+  return { id: "denial_codes", title: "Denial Codes and Reason", content, citations };
 }
 
-function buildRebuttalSection(
+function buildClinicalContextSection(
   dc: DenialCase,
   chunks: RetrievedChunk[],
   userContext: UserContext
 ): LetterSection {
-  const category = val(dc.denialCategory) ?? "other";
+  const f = resolveFields(dc, userContext);
   const citations: Citation[] = [];
   const warnings: string[] = [];
 
-  // Pull KB citations for this section
-  const relevantChunks = chunks
-    .filter((c) =>
-      c.meta.docType === "policy" ||
-      c.meta.docType === "prior_appeal_accepted" ||
-      c.meta.docType === "clinical" ||
-      c.meta.docType === "template"
-    )
+  const clinicalChunks = chunks
+    .filter((c) => c.meta.docType === "clinical" || c.meta.docType === "prior_appeal_accepted")
     .slice(0, 4);
-
-  for (const chunk of relevantChunks) {
+  for (const chunk of clinicalChunks) {
     citations.push(chunkToCitation(chunk, `kb:${chunk.meta.docType}`));
   }
 
-  const policyRefs = val(dc.policyReferences) ?? [];
-  const policyStr =
-    policyRefs.length > 0
-      ? policyRefs.map((p) => p.policyId).join(", ")
-      : null;
-
-  let content = "";
-
-  if (category === "benefit_limit") {
-    const hasClinical = chunks.some((c) => c.meta.docType === "clinical");
-    const hasPolicyChunk = chunks.some((c) => c.meta.docType === "policy");
-
-    content = `REBUTTAL — Benefit Limit Exception
-
-${policyStr ? `Your denial references ${policyStr}, which limits coverage under standard circumstances.` : "[NEEDS EVIDENCE: cite the specific policy provision that applies]"}${hasPolicyChunk ? "" : " [NEEDS EVIDENCE: obtain and attach the referenced Clinical Policy Bulletin to verify the stated session limit]"}
-
-We assert that this patient's circumstances warrant an exception for the following reasons:
-
-1. Documented Medical Necessity: The treating provider has determined that continued services are medically necessary. ${hasClinical ? "Clinical documentation enclosed herewith demonstrates ongoing functional deficits requiring continued skilled intervention." : "[NEEDS EVIDENCE: PT progress notes documenting current functional status and deficits]"}
-
-2. Functional Improvement: ${hasClinical ? "Enclosed clinical records demonstrate measurable functional improvement, evidencing that therapy is producing the expected results and should continue." : "[NEEDS EVIDENCE: PT progress notes showing functional improvement measurements (e.g., outcome scores, range of motion, pain scale)]."}
-
-3. Session Count Verification: We request verification of the session count used in this determination. If any sessions were miscounted or improperly attributed, the limit has not been reached. [NEEDS EVIDENCE: payer's session count record for this member and benefit year]
-
-Accordingly, we request that the payer invoke its medical necessity exception process and approve additional sessions as documented by the treating provider.`;
-  } else if (category === "medical_necessity") {
-    const hasClinical = chunks.some((c) => c.meta.docType === "clinical");
-    const diagStr = userContext.diagnosis ? ` for ${userContext.diagnosis}` : "";
-
-    content = `REBUTTAL — Medical Necessity
-
-The denied services are medically necessary${diagStr} and meet the criteria for coverage under the member's plan. The treating provider has documented clinical findings that support this determination.
-
-${hasClinical ? "Enclosed clinical notes and provider documentation demonstrate:\n  • Diagnosis and functional deficits requiring skilled intervention\n  • Treatment plan aligned with evidence-based clinical guidelines\n  • Progress toward measurable functional goals" : "[NEEDS EVIDENCE: clinical notes documenting diagnosis, functional deficits, treatment plan, and measurable goals]"}
-
-${policyStr ? `The plan's criteria under ${policyStr}` : "The applicable clinical policy criteria"} are satisfied as shown in the enclosed documentation. We request immediate reversal of this denial based on the attached evidence.`;
-  } else if (category === "authorization") {
-    content = `REBUTTAL — Authorization
-
-${val(dc.denialReasonSummary)?.toLowerCase().includes("emergenc")
-  ? "The services were provided on an emergency basis, which is exempt from prior authorization requirements under applicable regulations."
-  : "We contest the denial based on authorization for the following reasons:"}
-
-[NEEDS EVIDENCE: one of the following — (a) authorization number if obtained, (b) documentation that authorization was not required for this service/setting, or (c) timeline showing timely authorization attempt and any payer delay]
-
-We request that you review the authorization status and reprocess this claim accordingly.`;
-  } else if (category === "coding") {
-    const services = val(dc.services) ?? [];
-    const cptStr = services.flatMap((s) => s.cptCodes).join(", ");
-
-    content = `REBUTTAL — Coding and Billing
-
-The services billed under CPT code(s) ${cptStr || "[NEEDS EVIDENCE: CPT codes]"} accurately represent the services rendered and are properly documented in the clinical record.
-
-[NEEDS EVIDENCE: AMA CPT code definition printout for billed codes, and provider documentation supporting code selection]
-
-We request that you reprocess this claim using the correct adjudication criteria.`;
-  } else if (category === "eligibility") {
-    content = `REBUTTAL — Member Eligibility
-
-The member was eligible for benefits under this plan at the time services were rendered. [NEEDS EVIDENCE: eligibility verification record showing active coverage on date of service]
-
-We request that you verify eligibility using the correct member ID and date of service and reprocess accordingly.`;
-  } else if (category === "timely_filing") {
-    content = `REBUTTAL — Timely Filing
-
-The claim was submitted within the plan's required filing window. [NEEDS EVIDENCE: original claim submission confirmation, date stamp, or clearinghouse records demonstrating timely filing]
-
-We request that you verify the original submission date and reprocess this claim.`;
-  } else {
-    content = `REBUTTAL
-
-Based on a thorough review of the applicable coverage provisions and clinical record, we believe the denial of this claim is improper. ${chunks.length > 0 ? "We have identified supporting documentation in the knowledge base that is attached hereto." : "[NEEDS EVIDENCE: supporting documentation to rebut the stated denial reason]"}
-
-We respectfully request that you conduct a full clinical review of the enclosed evidence and reverse this determination.`;
+  const hasClinical = clinicalChunks.length > 0;
+  if (!hasClinical) {
+    warnings.push("No clinical documentation found in KB — ingest provider records via kb.ingest to strengthen this section.");
   }
 
-  if (citations.length === 0) {
-    warnings.push(
-      "Rebuttal section has no KB citations — ingest relevant policy and clinical documents via kb.ingest to strengthen this argument."
-    );
-  }
+  const diagStr = userContext.diagnosis
+    ? `the condition (${userContext.diagnosis}) related to this claim`
+    : "the condition related to this claim";
+
+  const content = `Based on the documentation provided and the clinical circumstances surrounding this claim, the denial appears to be inconsistent with the applicable coverage criteria and medical necessity standards.
+
+Clinical Context:
+The patient, ${f.patientName}, has been under active medical care for ${diagStr}. The treating provider has determined that the service rendered was medically necessary and appropriate given the patient's diagnosis, symptoms, and treatment history. ${hasClinical ? "Supporting documentation, including the Letter of Medical Necessity and relevant medical records, has been included for your review." : "[NEEDS EVIDENCE: Letter of Medical Necessity and relevant medical records should be included for review]"}`;
 
   return {
-    id: "rebuttal",
-    title: "Rebuttal and Supporting Arguments",
+    id: "clinical_context",
+    title: "Clinical Context",
     content,
     citations,
     warnings: warnings.length > 0 ? warnings : undefined,
+  };
+}
+
+function buildGroundsForAppealSection(
+  dc: DenialCase,
+  chunks: RetrievedChunk[],
+  userContext: UserContext
+): LetterSection {
+  const citations: Citation[] = [];
+  const category = val(dc.denialCategory) ?? "other";
+  const denialCodes = dc.denial_codes ?? [];
+  const denialCodeAnalysis = dc.denial_code_analysis ?? {};
+
+  const policyChunks = chunks
+    .filter((c) => c.meta.docType === "policy" || c.meta.docType === "template" || c.meta.docType === "prior_appeal_accepted")
+    .slice(0, 4);
+  for (const chunk of policyChunks) {
+    citations.push(chunkToCitation(chunk, `kb:${chunk.meta.docType}`));
+  }
+
+  let categorySpecificGrounds = "";
+  if (category === "benefit_limit") {
+    categorySpecificGrounds = `4. The patient's documented clinical progress and ongoing functional deficits warrant an exception to the standard benefit limit.
+5. Published clinical guidelines support continued treatment beyond the stated limit when measurable improvement is documented.`;
+  } else if (category === "medical_necessity") {
+    categorySpecificGrounds = `4. The treating provider's clinical judgment, supported by the enclosed documentation, confirms that the service meets established medical necessity criteria.
+5. Evidence-based clinical guidelines support the medical necessity of the rendered services for the patient's diagnosed condition.`;
+  } else if (category === "authorization") {
+    categorySpecificGrounds = `4. Authorization was obtained, not required for the service in question, or clinical circumstances warranted immediate treatment without delay.`;
+  } else if (category === "coding") {
+    categorySpecificGrounds = `4. The CPT codes submitted accurately represent the services rendered and are properly supported by clinical documentation.`;
+  } else if (category === "eligibility") {
+    categorySpecificGrounds = `4. The member was confirmed eligible for benefits at the time services were rendered.`;
+  } else if (category === "timely_filing") {
+    categorySpecificGrounds = `4. Records confirm the claim was submitted within the required filing window.`;
+  }
+
+  const hasAnalysis = Object.keys(denialCodeAnalysis).length > 0 || denialCodes.length > 0;
+
+  const content = `Grounds for Appeal:
+
+1. The denial reason cited does not fully account for the documented clinical findings and prior treatment history.
+2. ${hasAnalysis ? "The applicable denial code interpretation suggests an administrative or documentation-based issue rather than a lack of medical necessity." : "The stated denial rationale does not align with the clinical documentation and supporting evidence provided."}
+3. All required identifiers and claim information are clearly provided above to ensure accurate review.${categorySpecificGrounds ? "\n" + categorySpecificGrounds : ""}`;
+
+  return {
+    id: "grounds_for_appeal",
+    title: "Grounds for Appeal",
+    content,
+    citations,
   };
 }
 
@@ -355,21 +290,23 @@ function buildAttachmentsSection(
   chunks: RetrievedChunk[]
 ): LetterSection {
   const required = val(dc.requiredAttachments) ?? [];
-  const hasClinical = chunks.some((c) => c.meta.docType === "clinical");
   const category = val(dc.denialCategory) ?? "other";
 
   const baseAttachments = [
+    "Letter of Medical Necessity",
+    "Relevant Progress Notes",
+    "Procedure Documentation",
+    "Supporting Clinical Literature (if applicable)",
+    "Copy of Explanation of Benefits",
     ...required,
-    ...(hasClinical ? ["Clinical notes (enclosed from provider records)"] : []),
     ...(category === "benefit_limit" || category === "medical_necessity"
-      ? ["Physician / provider letter of medical necessity", "Functional outcome measures"]
+      ? ["Functional Outcome Measures", "Treatment Plan (initial and current)"]
       : []),
-    "Completed Appeal Request Form",
-    "Copy of original denial letter",
-    "Proof of appeal submission",
+    ...(category === "coding"
+      ? ["AMA CPT Code Definition Documentation"]
+      : []),
   ];
 
-  // Deduplicate
   const unique = [...new Set(baseAttachments)];
 
   const citations: Citation[] = [
@@ -380,64 +317,227 @@ function buildAttachmentsSection(
       .map((c) => chunkToCitation(c, "clinical_evidence")),
   ];
 
-  const content = `The following documents are enclosed in support of this appeal:\n\n${unique.map((a, i) => `${i + 1}. ${a}`).join("\n")}`;
+  const content = `Attached Documentation:
+${unique.map((a) => `- ${a}`).join("\n")}`;
 
-  return {
-    id: "attachments",
-    title: "Enclosed Documentation",
-    content,
-    citations,
-  };
+  return { id: "attachments", title: "Attached Documentation", content, citations };
+}
+
+function buildExtractionVerificationSection(
+  dc: DenialCase,
+  userContext: UserContext
+): LetterSection {
+  const notes = dc.extraction_notes ?? {};
+
+  const content = `Trust & Extraction Verification (for internal review alignment):
+
+Extraction Notes:
+- Patient Name Found: ${notes.patient_name_found ?? false}
+- Patient Address Found: ${notes.patient_address_found ?? false}
+- Identifiers Found: ${notes.identifiers_found ?? false}
+- Claim ID Found: ${notes.claim_id_found ?? false}
+- Denial Codes Found: ${notes.denial_codes_found ?? false}
+- Denial Reason Found: ${notes.denial_reason_found ?? false}
+
+All extracted identifiers and claim data have been included to ensure precise matching of this appeal to the correct member account and claim record.`;
+
+  return { id: "extraction_verification", title: "Extraction Verification", content, citations: [] };
 }
 
 function buildClosingSection(
   dc: DenialCase,
   userContext: UserContext
 ): LetterSection {
-  const memberName = val(dc.memberName) ?? "[Member Name]";
-  const appealWindow = val(dc.appealWindowDays);
-  const methods = val(dc.appealSubmissionMethods) ?? [];
-  const methodStr = methods.length > 0 ? methods.join(" or ") : "the address on file";
-  const contact = userContext.patientPhone
-    ? `\n\nIf you have any questions, please contact us at ${userContext.patientPhone}.`
-    : "";
-
-  const urgencyNote = appealWindow
-    ? `This appeal is time-sensitive; please process within your standard internal appeal timeline.`
-    : "[NEEDS EVIDENCE: confirm appeal deadline from denial letter or plan documents]";
+  const f = resolveFields(dc, userContext);
 
   const citations: Citation[] = [
     ...spans(dc.memberName).map((s) => spanToCitation(s, "memberName")),
     ...spans(dc.appealWindowDays).map((s) => spanToCitation(s, "appealWindowDays")),
-    ...spans(dc.appealSubmissionMethods).map((s) => spanToCitation(s, "submissionMethods")),
   ];
 
-  const content = `${urgencyNote}
+  const content = `I respectfully request a comprehensive reconsideration of this claim in light of the enclosed documentation and clarification of the denial rationale. If additional information is required, please contact me at the phone number on file or reach out directly to the treating provider listed in the medical documentation.
 
-We trust you will give this appeal full and fair consideration. We are available to provide any additional documentation you require.${contact}
+Thank you for your prompt attention to this matter. I look forward to your timely response and a favorable resolution.
 
 Sincerely,
 
-${memberName}
-Member / Patient Representative
-
-Submission method: ${methodStr}`;
+${f.patientName}
+${f.patientAddress}
+${f.phone}
+${f.email}`;
 
   return { id: "closing", title: "Closing and Signature", content, citations };
 }
 
-// ─── LLM-Enhanced Generation ──────────────────────────────────────────────
+// ─── LLM-Enhanced Generation (Claude / Anthropic) ────────────────────────
 
-async function generateWithLLM(
+async function generateWithClaude(
   dc: DenialCase,
   chunks: RetrievedChunk[],
   userContext: UserContext,
   opts: GenerateOptions
 ): Promise<LetterSection[] | null> {
-  if (!config.openaiApiKey) return null;
+  if (!config.anthropicApiKey) return null;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Anthropic = require("@anthropic-ai/sdk") as {
+      default: new (opts: { apiKey: string }) => {
+        messages: {
+          create: (opts: {
+            model: string;
+            max_tokens: number;
+            messages: Array<{ role: string; content: string }>;
+            system: string;
+            temperature: number;
+          }) => Promise<{
+            content: Array<{ type: string; text?: string }>;
+          }>;
+        };
+      };
+    };
+
+    const client = new Anthropic.default({ apiKey: config.anthropicApiKey });
+
+    const caseContext = formatDenialCaseForPrompt(dc);
+    const kbContext = chunks
+      .slice(0, 10)
+      .map(
+        (c, i) =>
+          `[KB_CHUNK_${i}] DocType: ${c.meta.docType} | ChunkId: ${c.chunkId}\n${c.text}`
+      )
+      .join("\n\n---\n\n");
+
+    const denialCodes = dc.denial_codes ?? [];
+    const denialCodeAnalysis = dc.denial_code_analysis ?? {};
+    const codeContext = denialCodes.length > 0
+      ? `\nDENIAL CODES AND ANALYSIS:\n${denialCodes.map((code) => {
+          const analysis = denialCodeAnalysis[code];
+          return analysis ? `- ${code}: ${analysis}` : `- ${code}`;
+        }).join("\n")}`
+      : "";
+
+    const systemPrompt = `You are a medical claims appeal specialist generating a formal appeal letter.
+
+STRICT RULES — NEVER VIOLATE:
+1. Use ONLY facts, numbers, dates, and policies from the DENIAL CASE, DENIAL CODES, and KB CHUNKS provided below.
+2. Do NOT invent payer addresses, fax numbers, policy names, session counts, dollar amounts, or medical facts.
+3. For any claim you cannot support with the provided evidence, write exactly: [NEEDS EVIDENCE: brief description]
+4. Every paragraph containing a dollar amount, date, session count, or CPT code MUST cite its source.
+5. Tone: ${opts.tone ?? "professional"}
+6. Use the denial codes and their human-readable analysis to craft specific, targeted rebuttals.
+7. Reference specific RAG knowledge base chunks when making policy or clinical arguments.
+${userContext.customInstructions ? `\nADDITIONAL INSTRUCTIONS FROM USER: ${userContext.customInstructions}` : ""}
+
+OUTPUT FORMAT — return valid JSON (no markdown fences):
+{
+  "sections": [
+    {
+      "id": "section_id",
+      "title": "Section Title",
+      "content": "Section content text with [NEEDS EVIDENCE:...] where unsupported",
+      "citationIds": ["KB_CHUNK_0", "KB_CHUNK_2", "DENIAL_CASE_SPAN:memberName"]
+    }
+  ]
+}
+
+Sections to generate (all of them, following this EXACT appeal letter template):
+1. header (id: "header") — Date, insurance company, patient info, claim ID, identifiers
+2. opening (id: "opening") — Formal opening referencing the claim denial
+3. denial_codes (id: "denial_codes") — List denial codes, verbatim denial reason, and human-readable analysis
+4. clinical_context (id: "clinical_context") — Clinical context and medical necessity argument
+5. grounds_for_appeal (id: "grounds_for_appeal") — Numbered grounds for appeal tailored to the denial category
+6. attachments (id: "attachments") — List of attached documentation
+7. extraction_verification (id: "extraction_verification") — Trust & extraction verification notes
+8. closing (id: "closing") — Closing request, signature, contact info`;
+
+    const userMsg = `DENIAL CASE:
+${caseContext}
+${codeContext}
+
+RETRIEVED KNOWLEDGE BASE (RAG context — use these for grounded arguments):
+${kbContext || "(no KB documents ingested — use NEEDS EVIDENCE placeholders)"}
+
+USER CONTEXT:
+${JSON.stringify(userContext, null, 2)}
+
+Generate a complete, grounded appeal letter. Every factual claim must be cited or marked [NEEDS EVIDENCE]. Use the denial codes and KB context to build specific, targeted arguments.`;
+
+    const response = await client.messages.create({
+      model: config.anthropicModel,
+      max_tokens: 8192,
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userMsg },
+      ],
+      temperature: 0.1,
+    });
+
+    const textBlock = response.content.find((b: { type: string; text?: string }) => b.type === "text");
+    const raw = textBlock?.text;
+    if (!raw) return null;
+
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]) as {
+      sections: Array<{
+        id: string;
+        title: string;
+        content: string;
+        citationIds: string[];
+      }>;
+    };
+
+    return parsed.sections.map((s) => {
+      const citations: Citation[] = [];
+      for (const cid of s.citationIds ?? []) {
+        if (cid.startsWith("KB_CHUNK_")) {
+          const idx = parseInt(cid.replace("KB_CHUNK_", ""), 10);
+          const chunk = chunks[idx];
+          if (chunk) citations.push(chunkToCitation(chunk, `llm:${chunk.meta.docType}`));
+        } else if (cid.startsWith("DENIAL_CASE_SPAN:")) {
+          const label = cid.replace("DENIAL_CASE_SPAN:", "");
+          const fieldMap: Record<string, SourceSpan[]> = {
+            memberName: dc.memberName.spans,
+            memberId: dc.memberId.spans,
+            claimNumber: dc.claimNumber.spans,
+            payerName: dc.payerName.spans,
+            letterDate: dc.letterDate.spans,
+            denialReason: dc.denialReasonSummary.spans,
+            serviceDate: dc.serviceDate.spans,
+            services: dc.services.spans,
+            policyReferences: dc.policyReferences.spans,
+            appealWindowDays: dc.appealWindowDays.spans,
+          };
+          const matchingSpans = fieldMap[label] ?? [];
+          citations.push(
+            ...matchingSpans.map((span) => spanToCitation(span, label))
+          );
+        }
+      }
+      return {
+        id: s.id,
+        title: s.title,
+        content: s.content,
+        citations,
+      } as LetterSection;
+    });
+  } catch (err) {
+    log("warn", "Claude LLM generation failed — falling back to template", err);
+    return null;
+  }
+}
+
+// Legacy OpenAI fallback (kept for backward compat if OPENAI_API_KEY is set but not ANTHROPIC)
+async function generateWithOpenAI(
+  dc: DenialCase,
+  chunks: RetrievedChunk[],
+  userContext: UserContext,
+  opts: GenerateOptions
+): Promise<LetterSection[] | null> {
+  if (!config.openaiApiKey || config.anthropicApiKey) return null;
+
+  try {
     const OpenAI = require("openai") as {
       default: new (opts: { apiKey: string }) => {
         chat: {
@@ -469,11 +569,9 @@ async function generateWithLLM(
     const systemPrompt = `You are a medical claims appeal specialist generating a formal appeal letter.
 
 STRICT RULES — NEVER VIOLATE:
-1. Use ONLY facts, numbers, dates, and policies from the DENIAL CASE and KB CHUNKS provided below.
-2. Do NOT invent payer addresses, fax numbers, policy names, session counts, dollar amounts, or medical facts.
-3. For any claim you cannot support with the provided evidence, write exactly: [NEEDS EVIDENCE: brief description]
-4. Every paragraph containing a dollar amount, date, session count, or CPT code MUST cite its source.
-5. Tone: ${opts.tone ?? "professional"}
+1. Use ONLY facts from the DENIAL CASE and KB CHUNKS provided below.
+2. Do NOT invent facts. For unsupported claims write: [NEEDS EVIDENCE: brief description]
+3. Tone: ${opts.tone ?? "professional"}
 
 OUTPUT FORMAT — return valid JSON:
 {
@@ -481,38 +579,22 @@ OUTPUT FORMAT — return valid JSON:
     {
       "id": "section_id",
       "title": "Section Title",
-      "content": "Section content text with [NEEDS EVIDENCE:...] where unsupported",
-      "citationIds": ["KB_CHUNK_0", "KB_CHUNK_2", "DENIAL_CASE_SPAN:memberName"]
+      "content": "Section content text",
+      "citationIds": ["KB_CHUNK_0", "DENIAL_CASE_SPAN:memberName"]
     }
   ]
 }
 
-Sections to generate (all of them):
-1. header (id: "header")
-2. service_details (id: "service_details")
-3. request (id: "request")
-4. denial_summary (id: "denial_summary")
-5. rebuttal (id: "rebuttal")
-6. attachments (id: "attachments")
-7. closing (id: "closing")`;
-
-    const userMsg = `DENIAL CASE:
-${caseContext}
-
-RETRIEVED KNOWLEDGE BASE:
-${kbContext || "(no KB documents ingested — use NEEDS EVIDENCE placeholders)"}
-
-USER CONTEXT:
-${JSON.stringify(userContext, null, 2)}`;
+Sections: header, opening, denial_codes, clinical_context, grounds_for_appeal, attachments, extraction_verification, closing`;
 
     const response = await client.chat.completions.create({
       model: config.openaiModel,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: userMsg },
+        { role: "user", content: `DENIAL CASE:\n${caseContext}\n\nKB:\n${kbContext || "(none)"}\n\nUSER CONTEXT:\n${JSON.stringify(userContext, null, 2)}` },
       ],
-      temperature: 0.1, // low temperature for consistency
+      temperature: 0.1,
     });
 
     const raw = response.choices[0]?.message?.content;
@@ -527,7 +609,6 @@ ${JSON.stringify(userContext, null, 2)}`;
       }>;
     };
 
-    // Convert citationIds to Citation objects
     return parsed.sections.map((s) => {
       const citations: Citation[] = [];
       for (const cid of s.citationIds ?? []) {
@@ -537,7 +618,6 @@ ${JSON.stringify(userContext, null, 2)}`;
           if (chunk) citations.push(chunkToCitation(chunk, `llm:${chunk.meta.docType}`));
         } else if (cid.startsWith("DENIAL_CASE_SPAN:")) {
           const label = cid.replace("DENIAL_CASE_SPAN:", "");
-          // Find matching spans from denial case
           const fieldMap: Record<string, SourceSpan[]> = {
             memberName: dc.memberName.spans,
             memberId: dc.memberId.spans,
@@ -551,20 +631,13 @@ ${JSON.stringify(userContext, null, 2)}`;
             appealWindowDays: dc.appealWindowDays.spans,
           };
           const matchingSpans = fieldMap[label] ?? [];
-          citations.push(
-            ...matchingSpans.map((span) => spanToCitation(span, label))
-          );
+          citations.push(...matchingSpans.map((span) => spanToCitation(span, label)));
         }
       }
-      return {
-        id: s.id,
-        title: s.title,
-        content: s.content,
-        citations,
-      } as LetterSection;
+      return { id: s.id, title: s.title, content: s.content, citations } as LetterSection;
     });
   } catch (err) {
-    log("warn", "LLM generation failed — falling back to template", err);
+    log("warn", "OpenAI generation failed — falling back to template", err);
     return null;
   }
 }
@@ -580,7 +653,6 @@ function formatDenialCaseForPrompt(dc: DenialCase): string {
     f("Payer Name", dc.payerName),
     f("Payer Address", dc.payerAddress),
     f("Letter Date", dc.letterDate),
-    // Prefer new flat fields
     flat("Patient Name (parsed)", dc.patient_name) || f("Member Name", dc.memberName),
     flat("Patient Address (parsed)", dc.patient_address),
     flat("Identifiers (parsed)", dc.identifiers),
@@ -599,6 +671,7 @@ function formatDenialCaseForPrompt(dc: DenialCase): string {
     f("Appeal Submission Methods", dc.appealSubmissionMethods),
     f("Appeal Instructions", dc.appealInstructions),
     f("Required Attachments", dc.requiredAttachments),
+    flat("Extraction Notes", dc.extraction_notes),
   ].filter(Boolean);
 
   return lines.join("\n");
@@ -620,7 +693,6 @@ function buildActionItems(
 
   const items: AppealLetter["actionItems"] = [];
 
-  // P0: Confirm deadline
   items.push({
     priority: "p0",
     action: appealDays
@@ -630,18 +702,16 @@ function buildActionItems(
     citations,
   });
 
-  // P0: Gather clinical evidence (for medical necessity or benefit limit)
   if (category === "benefit_limit" || category === "medical_necessity") {
     const hasClinical = chunks.some((c) => c.meta.docType === "clinical");
     items.push({
       priority: "p0",
       action: hasClinical
         ? "Obtain complete PT/clinical progress notes for all treatment sessions and include them in the appeal packet."
-        : "Contact provider to obtain: (1) progress notes for all sessions, (2) functional outcome measures, (3) physician letter of medical necessity. These are your strongest evidence.",
-      why:
-        category === "benefit_limit"
-          ? "Benefit limit exceptions require documented functional improvement and clinical necessity."
-          : "Medical necessity denials are overturned most reliably with complete clinical documentation.",
+        : "Contact provider to obtain: (1) progress notes, (2) functional outcome measures, (3) physician letter of medical necessity.",
+      why: category === "benefit_limit"
+        ? "Benefit limit exceptions require documented functional improvement and clinical necessity."
+        : "Medical necessity denials are overturned most reliably with complete clinical documentation.",
       citations: chunks
         .filter((c) => c.meta.docType === "clinical")
         .slice(0, 1)
@@ -649,52 +719,40 @@ function buildActionItems(
     });
   }
 
-  // P1: Physician letter
   items.push({
     priority: "p1",
-    action:
-      "Request a physician letter of medical necessity addressing the specific denial reason, functional deficits, and why additional services are warranted.",
+    action: "Request a physician letter of medical necessity addressing the specific denial reason.",
     why: "A physician's direct attestation carries significant weight in the clinical review process.",
-    citations: spans(dc.denialReasonSummary).map((s) =>
-      spanToCitation(s, "denialReason")
-    ),
+    citations: spans(dc.denialReasonSummary).map((s) => spanToCitation(s, "denialReason")),
   });
 
-  // P1: Policy-specific evidence
   const policyRefs = val(dc.policyReferences) ?? [];
   if (policyRefs.length > 0) {
     const hasPolicyChunk = chunks.some((c) => c.meta.docType === "policy");
     items.push({
       priority: "p1",
       action: hasPolicyChunk
-        ? `Review retrieved policy excerpts for ${policyRefs.map((p) => p.policyId).join(", ")} and ensure your clinical documentation satisfies every listed criterion.`
-        : `Obtain ${policyRefs.map((p) => p.policyId).join(", ")} from the payer website and ingest via kb.ingest to strengthen evidence matching.`,
+        ? `Review retrieved policy excerpts for ${policyRefs.map((p) => p.policyId).join(", ")} and ensure documentation satisfies every listed criterion.`
+        : `Obtain ${policyRefs.map((p) => p.policyId).join(", ")} from the payer and ingest via kb.ingest.`,
       why: "Rebutting a policy-specific denial requires demonstrating compliance with that exact policy's criteria.",
-      citations: spans(dc.policyReferences).map((s) =>
-        spanToCitation(s, "policyReferences")
-      ),
+      citations: spans(dc.policyReferences).map((s) => spanToCitation(s, "policyReferences")),
     });
   }
 
-  // P2: Submission confirmation
   items.push({
     priority: "p2",
-    action:
-      methods.length > 0
-        ? `Submit appeal via ${methods.join(" or ")} and obtain proof of submission (certified mail receipt, fax confirmation, or portal upload confirmation).`
-        : "Confirm where to submit the appeal (mail, fax, or portal) from the denial letter or payer website, then submit and retain proof.",
+    action: methods.length > 0
+      ? `Submit appeal via ${methods.join(" or ")} and obtain proof of submission.`
+      : "Confirm where to submit the appeal and retain proof.",
     why: "Proof of timely submission protects you if the payer claims non-receipt.",
-    citations: spans(dc.appealSubmissionMethods).map((s) =>
-      spanToCitation(s, "submissionMethods")
-    ),
+    citations: spans(dc.appealSubmissionMethods).map((s) => spanToCitation(s, "submissionMethods")),
   });
 
-  // P2: Missing evidence items from verification
   if (missingEvidence.length > 0) {
     items.push({
       priority: "p2",
       action: `Resolve missing evidence items before submission: ${missingEvidence.slice(0, 3).join("; ")}${missingEvidence.length > 3 ? ` (and ${missingEvidence.length - 3} more)` : ""}.`,
-      why: "NEEDS EVIDENCE placeholders in the letter indicate gaps that weaken the appeal.",
+      why: "NEEDS EVIDENCE placeholders indicate gaps that weaken the appeal.",
       citations: [],
     });
   }
@@ -710,27 +768,23 @@ function buildAttachmentChecklist(
 ): AppealLetter["attachmentChecklist"] {
   const required = val(dc.requiredAttachments) ?? [];
   const category = val(dc.denialCategory) ?? "other";
-  const hasClinical = chunks.some((c) => c.meta.docType === "clinical");
 
-  const items: Array<{ item: string; required: boolean; source?: string }> = [
-    { item: "Completed Appeal Request Form", required: true },
-    { item: "Copy of original denial letter", required: true },
-    { item: "Physician / provider letter of medical necessity", required: true },
+  const items: Array<{ item: string; required: boolean }> = [
+    { item: "Letter of Medical Necessity", required: true },
+    { item: "Copy of Explanation of Benefits", required: true },
+    { item: "Relevant Progress Notes", required: true },
+    { item: "Procedure Documentation", required: true },
     ...required.map((r) => ({ item: r, required: true })),
     ...(category === "benefit_limit" || category === "medical_necessity"
       ? [
-          { item: "PT/clinical progress notes for all sessions", required: true },
-          { item: "Functional outcome measurement scores", required: true },
-          { item: "Treatment plan (initial and current)", required: false },
+          { item: "Functional Outcome Measures", required: true },
+          { item: "Treatment Plan (initial and current)", required: false },
         ]
       : []),
-    ...(hasClinical
-      ? [{ item: "Enclosed clinical notes (from KB)", required: false }]
-      : []),
-    { item: "Proof of submission (certified mail receipt / fax confirmation)", required: false },
+    { item: "Supporting Clinical Literature (if applicable)", required: false },
+    { item: "Proof of submission", required: false },
   ];
 
-  // Deduplicate by item text
   const seen = new Set<string>();
   const deduped = items.filter((i) => {
     if (seen.has(i.item)) return false;
@@ -779,47 +833,44 @@ export async function generateAppealLetter(
   const includeCitationsInline = options.includeCitationsInline ?? true;
   const createdAt = new Date().toISOString();
 
-  // 1. Retrieve KB context for this case
   const chunks = retrieveForCase(store, denialCase);
   log("debug", "Retrieved KB chunks", { count: chunks.length });
 
-  // 2. Try LLM generation; fall back to template
   let sections: LetterSection[];
-  const llmSections = await generateWithLLM(denialCase, chunks, userContext, options);
 
-  if (llmSections && llmSections.length >= 5) {
-    log("info", "Using LLM-generated sections");
-    sections = llmSections;
+  // Prefer Claude, then OpenAI, then template
+  const claudeSections = await generateWithClaude(denialCase, chunks, userContext, options);
+  if (claudeSections && claudeSections.length >= 5) {
+    log("info", "Using Claude LLM-generated sections");
+    sections = claudeSections;
   } else {
-    log("info", "Using template-generated sections");
-    sections = [
-      buildHeaderSection(denialCase, userContext, options),
-      buildServiceDetailsSection(denialCase, options),
-      buildRequestSection(denialCase, userContext),
-      buildDenialSummarySection(denialCase, chunks),
-      buildRebuttalSection(denialCase, chunks, userContext),
-      buildAttachmentsSection(denialCase, chunks),
-      buildClosingSection(denialCase, userContext),
-    ];
+    const openaiSections = await generateWithOpenAI(denialCase, chunks, userContext, options);
+    if (openaiSections && openaiSections.length >= 5) {
+      log("info", "Using OpenAI LLM-generated sections");
+      sections = openaiSections;
+    } else {
+      log("info", "Using template-generated sections");
+      sections = [
+        buildHeaderSection(denialCase, userContext, options),
+        buildOpeningSection(denialCase, userContext),
+        buildDenialCodesSection(denialCase, chunks),
+        buildClinicalContextSection(denialCase, chunks, userContext),
+        buildGroundsForAppealSection(denialCase, chunks, userContext),
+        buildAttachmentsSection(denialCase, chunks),
+        buildExtractionVerificationSection(denialCase, userContext),
+        buildClosingSection(denialCase, userContext),
+      ];
+    }
   }
 
-  // 3. Verify citations — patch missing ones with NEEDS EVIDENCE
   const { sections: verifiedSections, unresolvedClaims, warnings: verifyWarnings } =
     verifySections(sections);
 
-  // 4. Collect all missing evidence
   const missingEvidence = collectMissingEvidence(verifiedSections);
-
-  // 5. Build action items
   const actionItems = buildActionItems(denialCase, missingEvidence, chunks);
-
-  // 6. Build attachment checklist
   const attachmentChecklist = buildAttachmentChecklist(denialCase, chunks);
-
-  // 7. Assemble full text
   const fullText = assembleFullText(verifiedSections, includeCitationsInline);
 
-  // Build parsedFields summary for UI consumption
   const parsedFields: ParsedCaseFields = {
     patientName: denialCase.patient_name ?? denialCase.memberName.value,
     patientAddress: denialCase.patient_address ?? userContext.patientAddress ?? null,

@@ -226,12 +226,16 @@ export interface GenerateOptions {
 export interface UserContext {
   patientAddress?: string;
   patientPhone?: string;
+  patientEmail?: string;
   diagnosis?: string;
   providerContact?: string;
   requestedOutcome?: string;
   notes?: string;
   providerNpi?: string;
   providerTaxId?: string;
+  insuranceCompanyName?: string;
+  insuranceCompanyAddress?: string;
+  customInstructions?: string;
 }
 
 // ─── Internal Vector Store ────────────────────────────────────────────────────

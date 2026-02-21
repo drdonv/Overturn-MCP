@@ -100,8 +100,9 @@ describe("appeal.generate — section count", () => {
   it("includes required section IDs", () => {
     const ids = generatedLetter.sections.map((s) => s.id);
     expect(ids).toContain("header");
-    expect(ids).toContain("service_details");
-    expect(ids).toContain("rebuttal");
+    expect(ids).toContain("opening");
+    expect(ids).toContain("denial_codes");
+    expect(ids).toContain("grounds_for_appeal");
     expect(ids).toContain("attachments");
     expect(ids).toContain("closing");
   });
@@ -114,9 +115,9 @@ describe("appeal.generate — attachment checklist", () => {
     expect(generatedLetter.attachmentChecklist.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("includes the appeal request form", () => {
+  it("includes the letter of medical necessity", () => {
     const items = generatedLetter.attachmentChecklist.map((a) => a.item.toLowerCase());
-    expect(items.some((i) => i.includes("appeal") && i.includes("form"))).toBe(true);
+    expect(items.some((i) => i.includes("medical necessity"))).toBe(true);
   });
 
   it("marks at least one item as required", () => {

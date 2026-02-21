@@ -27,6 +27,8 @@ export const config = {
   openaiApiKey: process.env.OPENAI_API_KEY ?? null,
   openaiModel: env("OPENAI_MODEL", "gpt-4o"),
   openaiEmbeddingModel: "text-embedding-3-small",
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? null,
+  anthropicModel: env("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
 } as const;
 
 export type Config = typeof config;

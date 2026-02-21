@@ -143,6 +143,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           userContext: {
             type: "object",
+            description: "Optional context. All fields are optional.",
             properties: {
               diagnosis: { type: "string" },
               requestedOutcome: {
@@ -152,6 +153,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
               providerNpi: { type: "string" },
               providerTaxId: { type: "string" },
               notes: { type: "string" },
+              patientPhone: { type: "string" },
+              patientEmail: { type: "string" },
+              insuranceCompanyName: { type: "string" },
+              insuranceCompanyAddress: { type: "string" },
             },
           },
         },
@@ -161,14 +166,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "appeal.generate",
       description:
-        "Generate a complete, grounded appeal letter. Every factual claim is cited or marked [NEEDS EVIDENCE]. Returns sections, full text, attachment checklist, and action items.",
+        "Generate a complete, grounded appeal letter using the standard appeal template. Uses Claude (Anthropic) for LLM-enhanced generation with RAG context when ANTHROPIC_API_KEY is set. Every factual claim is cited or marked [NEEDS EVIDENCE]. Returns sections, full text, attachment checklist, and action items. All fields are parsed from the denial case but can be overridden via userContext.",
       inputSchema: {
         type: "object",
         required: ["case"],
         properties: {
           case: {
             type: "object",
-            description: "DenialCase object from denial-inspector-mcp",
+            description: "DenialCase object from denial-inspector-mcp. All fields are optional except caseId. Parsed fields include: patient_name, patient_address, identifiers, claim_id, denial_codes, denial_reason_text, denial_code_analysis, extraction_notes.",
           },
           options: {
             type: "object",
@@ -177,6 +182,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
                 type: "string",
                 enum: ["professional", "firm", "concise"],
                 default: "professional",
+                description: "Letter tone. Claude will adapt the language style accordingly.",
               },
               includePatientCoverPage: { type: "boolean", default: true },
               maxPagesHint: { type: "number", default: 2 },
@@ -185,13 +191,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           userContext: {
             type: "object",
+            description: "Optional overrides and additional context. All fields are optional — the system will use parsed values from the denial case when not provided.",
             properties: {
-              patientAddress: { type: "string" },
-              patientPhone: { type: "string" },
-              diagnosis: { type: "string" },
-              providerContact: { type: "string" },
-              requestedOutcome: { type: "string" },
-              notes: { type: "string" },
+              patientAddress: { type: "string", description: "Patient mailing address (overrides parsed value)" },
+              patientPhone: { type: "string", description: "Patient phone number for the letter signature" },
+              patientEmail: { type: "string", description: "Patient email address for the letter signature" },
+              diagnosis: { type: "string", description: "Primary diagnosis for clinical context" },
+              providerContact: { type: "string", description: "Treating provider contact info" },
+              requestedOutcome: {
+                type: "string",
+                enum: ["pay_claim", "approve_service", "reprocess", "reduce_patient_resp", "other"],
+                description: "Desired appeal outcome",
+              },
+              notes: { type: "string", description: "Additional notes for context" },
+              providerNpi: { type: "string", description: "Provider NPI number" },
+              providerTaxId: { type: "string", description: "Provider Tax ID" },
+              insuranceCompanyName: { type: "string", description: "Insurance company name (overrides parsed payer name)" },
+              insuranceCompanyAddress: { type: "string", description: "Insurance company address (overrides parsed payer address)" },
+              customInstructions: { type: "string", description: "Custom instructions for Claude LLM to follow when generating the letter" },
             },
           },
           storeCaseForLookup: {
@@ -206,7 +223,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "appeal.generateFromCaseId",
       description:
-        "Generate an appeal letter from a previously stored case ID. Requires the case to have been saved via appeal.generate with storeCaseForLookup=true.",
+        "Generate an appeal letter from a previously stored case ID. Uses Claude (Anthropic) for LLM-enhanced generation when ANTHROPIC_API_KEY is set. Requires the case to have been saved via appeal.generate with storeCaseForLookup=true.",
       inputSchema: {
         type: "object",
         required: ["caseId"],
@@ -223,13 +240,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           userContext: {
             type: "object",
+            description: "Optional overrides and additional context. All fields are optional.",
             properties: {
               patientAddress: { type: "string" },
               patientPhone: { type: "string" },
+              patientEmail: { type: "string" },
               diagnosis: { type: "string" },
               providerContact: { type: "string" },
               requestedOutcome: { type: "string" },
               notes: { type: "string" },
+              providerNpi: { type: "string" },
+              providerTaxId: { type: "string" },
+              insuranceCompanyName: { type: "string" },
+              insuranceCompanyAddress: { type: "string" },
+              customInstructions: { type: "string" },
             },
           },
         },
@@ -410,7 +434,11 @@ async function main() {
   log("info", "Starting appeal-writer-mcp", {
     storagePath: config.storagePath,
     useEmbeddings: config.useEmbeddings,
-    openaiModel: config.openaiApiKey ? config.openaiModel : "disabled",
+    llm: config.anthropicApiKey
+      ? `claude (${config.anthropicModel})`
+      : config.openaiApiKey
+        ? `openai (${config.openaiModel})`
+        : "template-only (no API key)",
   });
 
   const port = parseInt(process.env.PORT ?? "0", 10);
