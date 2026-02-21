@@ -20,6 +20,8 @@ import {
   GenerateOptions,
   UserContext,
   SourceSpan,
+  ParsedCaseFields,
+  Identifier,
 } from "../types";
 import { letterId } from "../utils/hash";
 import { retrieveForCase } from "../kb/retrieve";
@@ -77,9 +79,10 @@ function buildHeaderSection(
     year: "numeric", month: "long", day: "numeric",
   });
   const letterDate = val(dc.letterDate) ?? today;
-  const memberName = val(dc.memberName) ?? "[Member Name]";
-  const memberId = val(dc.memberId) ?? "[Member ID]";
-  const claimNumber = val(dc.claimNumber) ?? "[Claim Number]";
+  // Prefer new patient_name field, fall back to memberName.value
+  const memberName = dc.patient_name ?? val(dc.memberName) ?? "[Member Name]";
+  // Prefer new claim_id field, fall back to claimNumber.value
+  const claimNumber = dc.claim_id ?? val(dc.claimNumber) ?? "[Claim Number]";
   const payer = val(dc.payerName) ?? "[Payer Name]";
   const payerAddr = val(dc.payerAddress) ?? "[Payer Address]";
 
@@ -91,9 +94,22 @@ function buildHeaderSection(
     ...spans(dc.letterDate).map((s) => spanToCitation(s, "letterDate")),
   ];
 
-  const patientBlock = userContext.patientAddress
-    ? `${memberName}\n${userContext.patientAddress}\n${userContext.patientPhone ?? ""}\n\n`
+  // Build identifier lines from the new identifiers array
+  const identifierLines = (dc.identifiers ?? [])
+    .map((id) => `${id.label}: ${id.value}`)
+    .join("\n");
+
+  // Prefer new patient_address, then userContext, then nothing
+  const resolvedAddress = dc.patient_address ?? userContext.patientAddress ?? null;
+  const patientBlock = resolvedAddress
+    ? `${memberName}\n${resolvedAddress}\n${userContext.patientPhone ?? ""}\n\n`
     : `${memberName}\n\n`;
+
+  // Primary member ID: prefer identifiers lookup, then memberId.value
+  const primaryId =
+    (dc.identifiers ?? []).find(
+      (id) => /member\s*id/i.test(id.label) || /subscriber\s*id/i.test(id.label)
+    )?.value ?? val(dc.memberId) ?? "[Member ID]";
 
   const content = `${today}
 
@@ -102,9 +118,9 @@ ${payerAddr}
 
 Re: INTERNAL APPEAL — Denial of Claim
 Member Name: ${memberName}
-Member ID: ${memberId}
+Member ID: ${primaryId}
 Claim Number: ${claimNumber}
-Date of Original Denial Letter: ${letterDate}`;
+Date of Original Denial Letter: ${letterDate}${identifierLines ? `\n\nAdditional Identifiers:\n${identifierLines}` : ""}`;
 
   return { id: "header", title: "Header", content, citations };
 }
@@ -131,13 +147,17 @@ function buildServiceDetailsSection(
     return `  • ${svc.serviceName}${cpts}${amount} — Status: ${svc.status}`;
   }).join("\n");
 
+  // Reference ID for the service section (prefer claim_id)
+  const refId = dc.claim_id ?? val(dc.claimNumber);
+  const refNote = refId ? ` (Claim #${refId})` : "";
+
   const providerNote = val(dc.providerName)
     ? `provided by ${provider}`
     : "[NEEDS EVIDENCE: provider name not found — obtain from claim or EOB]";
 
   const content = `Dear Claims Review Department,
 
-We are writing to formally appeal the denial of the following service(s) ${providerNote} on ${serviceDate}:
+We are writing to formally appeal the denial of the following service(s) ${providerNote} on ${serviceDate}${refNote}:
 
 ${serviceLines || "  • [NEEDS EVIDENCE: service details not extracted from denial letter]"}
 
@@ -147,7 +167,7 @@ Please review the complete record and clinical justification presented below.`;
 }
 
 function buildRequestSection(dc: DenialCase, userContext: UserContext): LetterSection {
-  const claimNumber = val(dc.claimNumber) ?? "[Claim Number]";
+  const claimNumber = dc.claim_id ?? val(dc.claimNumber) ?? "[Claim Number]";
   const outcome = userContext.requestedOutcome ?? "pay_claim";
   const outcomeText =
     {
@@ -171,7 +191,9 @@ function buildDenialSummarySection(
   dc: DenialCase,
   chunks: RetrievedChunk[]
 ): LetterSection {
-  const denialReason = val(dc.denialReasonSummary) ?? "[Denial reason not extracted]";
+  // Prefer verbatim denial_reason_text, fall back to denialReasonSummary
+  const denialReason =
+    dc.denial_reason_text ?? val(dc.denialReasonSummary) ?? "[Denial reason not extracted]";
   const letterDate = val(dc.letterDate) ?? "[date]";
   const policyRefs = val(dc.policyReferences) ?? [];
   const citations: Citation[] = [
@@ -185,9 +207,23 @@ function buildDenialSummarySection(
       ? ` citing ${policyRefs.map((p) => p.policyId + (p.title ? ` (${p.title})` : "")).join(", ")}`
       : "";
 
+  // Include denial codes block if available
+  const denialCodes = dc.denial_codes ?? [];
+  const denialCodeAnalysis = dc.denial_code_analysis ?? null;
+  let codesBlock = "";
+  if (denialCodes.length > 0) {
+    const codeLines = denialCodes
+      .map((code) => {
+        const explanation = denialCodeAnalysis?.[code];
+        return explanation ? `  • ${code}: ${explanation}` : `  • ${code}`;
+      })
+      .join("\n");
+    codesBlock = `\n\nDenial Code(s):\n${codeLines}`;
+  }
+
   const content = `In your letter dated ${letterDate}, you denied coverage for the above service(s)${policyStr}, stating:
 
-"${denialReason}"
+"${denialReason}"${codesBlock}
 
 We respectfully contest this determination on the grounds set forth below.`;
 
@@ -537,25 +573,35 @@ function formatDenialCaseForPrompt(dc: DenialCase): string {
   const f = <T>(label: string, field: { value: T | null }): string =>
     `${label}: ${field.value !== null ? JSON.stringify(field.value) : "(not found)"}`;
 
-  return [
+  const flat = (label: string, v: unknown): string =>
+    v != null ? `${label}: ${JSON.stringify(v)}` : "";
+
+  const lines = [
     f("Payer Name", dc.payerName),
     f("Payer Address", dc.payerAddress),
     f("Letter Date", dc.letterDate),
-    f("Member Name", dc.memberName),
+    // Prefer new flat fields
+    flat("Patient Name (parsed)", dc.patient_name) || f("Member Name", dc.memberName),
+    flat("Patient Address (parsed)", dc.patient_address),
+    flat("Identifiers (parsed)", dc.identifiers),
+    flat("Claim ID (parsed)", dc.claim_id) || f("Claim Number", dc.claimNumber),
     f("Member ID", dc.memberId),
-    f("Claim Number", dc.claimNumber),
     f("Provider Name", dc.providerName),
     f("Service Date", dc.serviceDate),
     f("Services", dc.services),
     f("Denial Category", dc.denialCategory),
-    f("Denial Reason", dc.denialReasonSummary),
+    flat("Denial Codes (parsed)", dc.denial_codes),
+    flat("Denial Reason Text (parsed)", dc.denial_reason_text) || f("Denial Reason", dc.denialReasonSummary),
+    flat("Denial Code Analysis (parsed)", dc.denial_code_analysis),
     f("Policy References", dc.policyReferences),
     f("Patient Responsibility", dc.patientResponsibilityAmount),
     f("Appeal Window Days", dc.appealWindowDays),
     f("Appeal Submission Methods", dc.appealSubmissionMethods),
     f("Appeal Instructions", dc.appealInstructions),
     f("Required Attachments", dc.requiredAttachments),
-  ].join("\n");
+  ].filter(Boolean);
+
+  return lines.join("\n");
 }
 
 // ─── Action Items ──────────────────────────────────────────────────────────
@@ -773,6 +819,22 @@ export async function generateAppealLetter(
   // 7. Assemble full text
   const fullText = assembleFullText(verifiedSections, includeCitationsInline);
 
+  // Build parsedFields summary for UI consumption
+  const parsedFields: ParsedCaseFields = {
+    patientName: denialCase.patient_name ?? denialCase.memberName.value,
+    patientAddress: denialCase.patient_address ?? userContext.patientAddress ?? null,
+    identifiers: denialCase.identifiers ?? (
+      denialCase.memberId.value
+        ? [{ label: "Member ID", value: denialCase.memberId.value }]
+        : []
+    ),
+    claimId: denialCase.claim_id ?? denialCase.claimNumber.value,
+    denialCodes: denialCase.denial_codes ?? [],
+    denialReasonText: denialCase.denial_reason_text ?? denialCase.denialReasonSummary.value,
+    denialCodeAnalysis: denialCase.denial_code_analysis ?? null,
+    extractionNotes: denialCase.extraction_notes ?? null,
+  };
+
   return {
     letterId: letterId(denialCase.caseId, createdAt),
     caseId: denialCase.caseId,
@@ -784,5 +846,6 @@ export async function generateAppealLetter(
     attachmentChecklist,
     missingEvidence,
     actionItems,
+    parsedFields,
   };
 }

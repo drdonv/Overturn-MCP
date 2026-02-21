@@ -10,8 +10,10 @@
  *   appeal.generateFromCaseId — generate from a stored case ID
  */
 
+import http from "http";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
   ErrorCode,
@@ -411,9 +413,42 @@ async function main() {
     openaiModel: config.openaiApiKey ? config.openaiModel : "disabled",
   });
 
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  log("info", "appeal-writer-mcp running on stdio");
+  const port = parseInt(process.env.PORT ?? "0", 10);
+
+  if (port > 0) {
+    // ── HTTP mode (Manufact Cloud / any HTTP-based MCP host) ──────────────────
+    // Use stateless StreamableHTTP transport — each POST is a full JSON-RPC cycle.
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // stateless
+    });
+    await server.connect(transport);
+
+    const httpServer = http.createServer(async (req, res) => {
+      try {
+        await transport.handleRequest(req, res);
+      } catch (err) {
+        log("error", "HTTP request handling error", err);
+        if (!res.headersSent) {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Internal server error" }));
+        }
+      }
+    });
+
+    httpServer.listen(port, "0.0.0.0", () => {
+      log("info", `appeal-writer-mcp running on HTTP 0.0.0.0:${port}`);
+    });
+
+    httpServer.on("error", (err) => {
+      log("error", "HTTP server error", err);
+      process.exit(1);
+    });
+  } else {
+    // ── Stdio mode (local Claude Desktop / MCP clients) ────────────────────────
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    log("info", "appeal-writer-mcp running on stdio");
+  }
 }
 
 main().catch((err) => {
