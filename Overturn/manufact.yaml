@@ -1,0 +1,27 @@
+name: overturn-mcp
+version: 1.0.0
+description: "MCP server for insurance denial extraction, code analysis, and appeal drafting"
+runtime: node18
+entry: dist/index.js
+transport: stdio
+
+build:
+  command: npm ci && npm run build
+
+env:
+  GEMINI_MODEL: gemini-3-flash-preview
+  USE_CLAUDE_PARSER: "false"
+
+secrets:
+  - GEMINI_API_KEY
+  - ANTHROPIC_API_KEY
+
+tools:
+  - name: extract_claim_data
+    description: "Extract raw text and metadata from an insurance denial PDF."
+  - name: extract_and_analyze_denial
+    description: "One-shot denial workflow: extract, parse, and map denial codes."
+  - name: analyze_denial_codes
+    description: "Map denial codes to CARC explanations and suggested actions."
+  - name: generate_appeal_draft
+    description: "Generate a structured markdown appeal draft from denial context."

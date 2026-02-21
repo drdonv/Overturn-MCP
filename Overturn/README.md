@@ -26,3 +26,11 @@ To learn more about mcp-use and MCP:
 ```bash
 npm run deploy
 ```
+
+## Production Deploy Notes
+
+- Transport is `stdio` (configured in `index.ts` and `manufact.yaml`).
+- Deploy entrypoint is `dist/index.js` and build command is `npm ci && npm run build`.
+- Set `GEMINI_API_KEY` as a secret for LLM parsing in Manufact.
+- Optional: set `ANTHROPIC_API_KEY` and toggle `USE_CLAUDE_PARSER=true` if you switch parser providers.
+- Keep `GEMINI_MODEL` and `USE_CLAUDE_PARSER` in env config (non-secret).
