@@ -4,3 +4,6 @@ data/
 data_demo/
 *.js.map
 .env
+
+# mcp-use deployment
+.mcp-use
