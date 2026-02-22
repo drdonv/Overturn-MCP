@@ -8,35 +8,67 @@ import {
 } from "../schemas/tool-schemas";
 
 export class LlmDenialParsingService {
-  private readonly model: string;
-  private readonly client: GoogleGenerativeAI | null;
   private readonly claudeClient: Anthropic | null;
+  private readonly geminiClient: GoogleGenerativeAI | null;
+  private readonly geminiModel: string;
 
   constructor() {
-    const useClaudeParser = process.env.USE_CLAUDE_PARSER === "true";
+    this.claudeClient = process.env.ANTHROPIC_API_KEY
+      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+      : null;
 
-    this.model = process.env.GEMINI_MODEL ?? "gemini-3-flash-preview";
-    this.client = process.env.GEMINI_API_KEY
+    this.geminiModel = process.env.GEMINI_MODEL ?? "gemini-3-flash-preview";
+    this.geminiClient = process.env.GEMINI_API_KEY
       ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
       : null;
-    this.claudeClient =
-      useClaudeParser && process.env.ANTHROPIC_API_KEY
-        ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-        : null;
   }
 
   async parseFromRawText(rawText: string) {
-    if (!this.client) {
-      throw new Error(
-        "GEMINI_API_KEY is not set. Configure it in your .env file."
-      );
+    if (this.claudeClient) {
+      return this.parseWithClaude(rawText);
+    }
+    if (this.geminiClient) {
+      return this.parseWithGemini(rawText);
+    }
+    throw new Error(
+      "No LLM API key configured. Set ANTHROPIC_API_KEY (preferred) or GEMINI_API_KEY in your environment."
+    );
+  }
+
+  private async parseWithClaude(rawText: string) {
+    if (!this.claudeClient) throw new Error("Claude client not initialized.");
+
+    const response = await this.claudeClient.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2048,
+      system: DENIAL_PARSING_PROMPTS.system,
+      messages: [
+        {
+          role: "user",
+          content: [
+            DENIAL_PARSING_PROMPTS.userTemplate(rawText),
+            "",
+            "Return JSON only.",
+          ].join("\n"),
+        },
+      ],
+    });
+
+    const textBlock = response.content.find((c) => c.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      throw new Error("Claude returned an empty parsing response.");
     }
 
-    const model = this.client.getGenerativeModel({
-      model: this.model,
-      generationConfig: {
-        temperature: 0,
-      },
+    const parsedJson = this.extractJsonObject(textBlock.text);
+    return this.finalize(parsedJson);
+  }
+
+  private async parseWithGemini(rawText: string) {
+    if (!this.geminiClient) throw new Error("Gemini client not initialized.");
+
+    const model = this.geminiClient.getGenerativeModel({
+      model: this.geminiModel,
+      generationConfig: { temperature: 0 },
     });
 
     const prompt = [
@@ -55,16 +87,24 @@ export class LlmDenialParsingService {
     }
 
     const parsedJson = this.extractJsonObject(textBlocks);
+    return this.finalize(parsedJson);
+  }
+
+  private finalize(parsedJson: unknown) {
     const normalizedFields = this.normalizeModelOutput(parsedJson);
     const parsedFields = parsedDenialFieldsSchema.parse(normalizedFields);
 
     return {
       ...parsedFields,
       denial_codes: Array.from(
-        new Set(parsedFields.denial_codes.map((code) => code.trim()).filter(Boolean))
+        new Set(
+          parsedFields.denial_codes.map((code) => code.trim()).filter(Boolean)
+        )
       ),
       cpt_codes: Array.from(
-        new Set(parsedFields.cpt_codes.map((code) => code.trim()).filter(Boolean))
+        new Set(
+          parsedFields.cpt_codes.map((code) => code.trim()).filter(Boolean)
+        )
       ),
       extraction_notes: {
         claim_id_found: parsedFields.claim_id !== "UNKNOWN",
@@ -84,7 +124,7 @@ export class LlmDenialParsingService {
     const firstBrace = textContent.indexOf("{");
     const lastBrace = textContent.lastIndexOf("}");
     if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
-      throw new Error("Gemini response did not contain a valid JSON object.");
+      throw new Error("LLM response did not contain a valid JSON object.");
     }
     const candidate = textContent.slice(firstBrace, lastBrace + 1);
     return JSON.parse(candidate);
@@ -94,9 +134,8 @@ export class LlmDenialParsingService {
     const input = this.ensureRecord(raw);
 
     const normalizedIdentifiers = this.normalizeIdentifiers(input.identifiers);
-    const { denialCodes, policyReferencesFromCodes } = this.normalizeDenialCodes(
-      input.denial_codes
-    );
+    const { denialCodes, policyReferencesFromCodes } =
+      this.normalizeDenialCodes(input.denial_codes);
     const explicitPolicyReferences = this.normalizeStringArray(
       input.policy_references
     );
@@ -186,28 +225,22 @@ export class LlmDenialParsingService {
 
   private isCarcLikeCode(code: string): boolean {
     const cleaned = code.toUpperCase().split(/\s+/).join("");
-    if (/^(CO|PR|OA|PI)-?\d{1,3}$/.test(cleaned)) {
-      return true;
-    }
-    if (/^\d{1,3}$/.test(cleaned)) {
-      return true;
-    }
-    if (/^CARC[:#-]?\d{1,3}$/.test(cleaned)) {
-      return true;
-    }
+    if (/^(CO|PR|OA|PI)-?\d{1,3}$/.test(cleaned)) return true;
+    if (/^\d{1,3}$/.test(cleaned)) return true;
+    if (/^CARC[:#-]?\d{1,3}$/.test(cleaned)) return true;
     return false;
   }
 
   private normalizeIdentifiers(
     value: unknown
   ): Array<{ label: string; value: string }> {
-    if (!Array.isArray(value)) {
-      return [];
-    }
+    if (!Array.isArray(value)) return [];
 
     const mapped = value
       .map((item) => this.normalizeIdentifierEntry(item))
-      .filter((item): item is { label: string; value: string } => item !== null);
+      .filter(
+        (item): item is { label: string; value: string } => item !== null
+      );
 
     const deduped = new Map<string, { label: string; value: string }>();
     for (const item of mapped) {
@@ -230,19 +263,12 @@ export class LlmDenialParsingService {
       return null;
     }
 
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      return null;
-    }
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
 
     const record = item as Record<string, unknown>;
     const label = this.toKnownString(record.label, "").toLowerCase();
     const value = this.toKnownString(record.value, "");
-    if (!label || !value) {
-      return null;
-    }
-    return {
-      label: label.split(/\s+/).join("_"),
-      value,
-    };
+    if (!label || !value) return null;
+    return { label: label.split(/\s+/).join("_"), value };
   }
 }
