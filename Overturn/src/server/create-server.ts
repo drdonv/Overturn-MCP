@@ -8,7 +8,7 @@ export function createServer(): MCPServer {
     title: "Health Insurance Claim Denial Analyzer",
     version: "1.0.0",
     description:
-      "MCP server for denial PDF extraction, denial code interpretation, and appeal draft generation.",
+      "MCP server for denial PDF extraction, denial code interpretation, appeal draft generation, and the Overturn dashboard widget for Claude/Manufact.",
   });
 
   registerServerHandlers(server);

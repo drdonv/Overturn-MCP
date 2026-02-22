@@ -1,5 +1,5 @@
 import type { MCPServer } from "mcp-use/server";
-import { object, text } from "mcp-use/server";
+import { object, text, widget } from "mcp-use/server";
 
 import { DenialMapping, denialKnowledgeBase } from "../constants/denial";
 import { DenialAnalysisService } from "../services/denial-analysis.service";
@@ -12,7 +12,10 @@ import {
   extractAndAnalyzeDenialSchema,
   extractClaimDataSchema,
   generateAppealDraftSchema,
+  openOverturnDashboardSchema,
+  loadDemoCaseSchema,
 } from "../schemas/tool-schemas";
+import { DEMO_CASES } from "../constants/demo-cases";
 import {
   classifyPdfError,
   getErrorMessage,
@@ -192,6 +195,98 @@ export function registerServerHandlers(server: MCPServer): void {
           err instanceof Error ? err.message : "Invalid appeal payload.";
         return mcpErrorResponse("MCP_INVALID_INPUT", message);
       }
+    }
+  );
+
+  server.tool(
+    {
+      name: "load_demo_case",
+      description:
+        "Load a demo denial case for testing. Returns pre-built parsed fields, denial code analysis, and appeal-ready data. Call without case_id to list available demos. Available: demo_medical_necessity, demo_prior_auth, demo_coding_error.",
+      schema: loadDemoCaseSchema,
+    },
+    async (input) => {
+      const parsed = loadDemoCaseSchema.parse(input);
+
+      if (!parsed.case_id) {
+        return object({
+          available_demos: DEMO_CASES.map((d) => ({
+            id: d.id,
+            title: d.title,
+            description: d.description,
+          })),
+        });
+      }
+
+      const demo = DEMO_CASES.find((d) => d.id === parsed.case_id);
+      if (!demo) {
+        return object({
+          error: `Demo case '${parsed.case_id}' not found.`,
+          available_demos: DEMO_CASES.map((d) => d.id),
+        });
+      }
+
+      const denialCodeAnalysisStrings = demo.denial_code_analysis
+        .filter((a) => a.found)
+        .map(
+          (a) =>
+            `${a.input_code}: ${a.title} — ${a.explanation} (Action: ${a.recommended_action})`
+        );
+
+      return object({
+        demo_id: demo.id,
+        title: demo.title,
+        description: demo.description,
+        parsed_fields: demo.parsed_fields,
+        denial_code_analysis: demo.denial_code_analysis,
+        denial_code_analysis_strings: denialCodeAnalysisStrings,
+        appeal_ready_fields: {
+          patient_name: demo.parsed_fields.patient_name,
+          patient_address: demo.parsed_fields.patient_address,
+          claim_id: demo.parsed_fields.claim_id,
+          identifiers: demo.parsed_fields.identifiers,
+          denial_codes: demo.parsed_fields.denial_codes,
+          denial_reason_text: demo.parsed_fields.denial_reason_text,
+          denial_code_analysis: denialCodeAnalysisStrings,
+          cpt_codes: demo.parsed_fields.cpt_codes,
+          policy_references: demo.parsed_fields.policy_references,
+          extraction_notes: demo.parsed_fields.extraction_notes,
+        },
+      });
+    }
+  );
+
+  server.tool(
+    {
+      name: "open_overturn_dashboard",
+      description:
+        "Opens the Overturn appeal dashboard widget. Use this to let the user process denial PDFs, view extracted claim data, generate appeal letters with Claude, and manage claims in one place. Optionally pass initial_file_path to pre-fill the PDF path.",
+      schema: openOverturnDashboardSchema,
+      widget: {
+        name: "overturn-dashboard",
+        invoking: "Opening Overturn dashboard…",
+        invoked: "Dashboard ready",
+      },
+    },
+    async (input) => {
+      const parsed = openOverturnDashboardSchema.parse(input);
+      const demos = DEMO_CASES.map((d) => ({
+        id: d.id,
+        title: d.title,
+        description: d.description,
+      }));
+      return widget({
+        props: {
+          initial_file_path: parsed.initial_file_path,
+          demos,
+          claims: [],
+        },
+        output: text(
+          parsed.initial_file_path
+            ? `Overturn dashboard opened with PDF path: ${parsed.initial_file_path}. Use the widget to extract, generate appeal letter, and add to claims.`
+            : "Overturn dashboard opened. Use the demo buttons or enter a denial PDF path to extract and generate an appeal letter."
+        ),
+      });
     }
   );
 

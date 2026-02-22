@@ -122,3 +122,19 @@ export const parsedDenialFieldsSchema = z.object({
 });
 
 export type ParsedDenialFields = z.infer<typeof parsedDenialFieldsSchema>;
+
+export const openOverturnDashboardSchema = z.object({
+  initial_file_path: z
+    .string()
+    .optional()
+    .describe("Optional path to a denial PDF to pre-fill the intake field"),
+});
+
+export const loadDemoCaseSchema = z.object({
+  case_id: z
+    .string()
+    .optional()
+    .describe(
+      "ID of a demo case to load. Options: demo_medical_necessity, demo_prior_auth, demo_coding_error. If omitted, returns a list of available demos."
+    ),
+});
