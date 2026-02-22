@@ -1,6 +1,6 @@
 import { MCPServer } from "mcp-use/server";
 
-import { registerServerHandlers } from "./register";
+import { registerServerHandlers } from "./register.js";
 
 export function createServer(): MCPServer {
   const server = new MCPServer({

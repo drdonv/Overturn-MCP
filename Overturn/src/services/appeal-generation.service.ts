@@ -4,9 +4,9 @@ import {
   DenialMapping,
   denialKnowledgeBase,
   appealStrategyByDenialCategory,
-} from "../constants/denial";
-import { normalizeCode } from "../utils/normalization";
-import type { GenerateAppealDraftInput } from "../schemas/tool-schemas";
+} from "../constants/denial.js";
+import { normalizeCode } from "../utils/normalization.js";
+import type { GenerateAppealDraftInput } from "../schemas/tool-schemas.js";
 
 export class AppealGenerationService {
   private claudeClient: Anthropic | null;

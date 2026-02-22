@@ -1,7 +1,7 @@
 import "dotenv/config";
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createServer } from "./src/server/create-server";
+import { createServer } from "./src/server/create-server.js";
 
 async function startServer(): Promise<void> {
   const server = createServer();

@@ -1,11 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-import { DENIAL_PARSING_PROMPTS } from "../constants/prompts";
+import { DENIAL_PARSING_PROMPTS } from "../constants/prompts.js";
 import {
   parsedDenialFieldsSchema,
   type ParsedDenialFields,
-} from "../schemas/tool-schemas";
+} from "../schemas/tool-schemas.js";
 
 export class LlmDenialParsingService {
   private readonly claudeClient: Anthropic | null;
