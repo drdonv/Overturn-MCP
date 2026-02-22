@@ -103,6 +103,13 @@ export function registerServerHandlers(server: MCPServer): void {
           parsedFields.denial_codes
         );
 
+        const denialCodeAnalysisStrings = codeAnalysis
+          .filter((a: any) => a.found)
+          .map(
+            (a: any) =>
+              `${a.input_code}: ${a.title} — ${a.explanation} (Action: ${a.recommended_action})`
+          );
+
         return object({
           file_path: extracted.file_path,
           metadata: extracted.metadata,
@@ -110,6 +117,19 @@ export function registerServerHandlers(server: MCPServer): void {
           parsing_source: parsingSource,
           parsing_warnings: parsingWarnings,
           denial_code_analysis: codeAnalysis,
+          denial_code_analysis_strings: denialCodeAnalysisStrings,
+          appeal_ready_fields: {
+            patient_name: parsedFields.patient_name,
+            patient_address: parsedFields.patient_address,
+            claim_id: parsedFields.claim_id,
+            identifiers: parsedFields.identifiers,
+            denial_codes: parsedFields.denial_codes,
+            denial_reason_text: parsedFields.denial_reason_text,
+            denial_code_analysis: denialCodeAnalysisStrings,
+            cpt_codes: parsedFields.cpt_codes,
+            policy_references: parsedFields.policy_references,
+            extraction_notes: parsedFields.extraction_notes,
+          },
         });
       } catch (err) {
         const classified = classifyPdfError(err);
@@ -149,17 +169,24 @@ export function registerServerHandlers(server: MCPServer): void {
   server.tool(
     {
       name: "generate_appeal_draft",
-      description:
-        "Generates a structured markdown appeal letter from claim denial context.",
+      description: [
+        "Generates a formal appeal letter for a denied insurance claim.",
+        "Uses the provided claim data to fill a structured template.",
+        "When ANTHROPIC_API_KEY is set, enhances the letter with Claude AI using RAG context from the denial code knowledge base.",
+        "All fields are optional — provide as many as available for the best result.",
+        "Fields: patient_name, patient_address, claim_id, identifiers, denial_codes, denial_reason_text,",
+        "denial_code_analysis, cpt_codes, policy_references, extraction_notes,",
+        "insurance_company_name, insurance_company_address, phone_number, email_address,",
+        "clinical_justification_text, custom_instructions, use_ai_enhancement.",
+      ].join(" "),
       schema: generateAppealDraftSchema,
     },
     async (input) => {
       try {
         const parsedInput = generateAppealDraftSchema.parse(input);
-        const markdownDraft = appealGenerationService.generateAppealDraft(
-          parsedInput
-        );
-        return text(markdownDraft);
+        const appealLetter =
+          await appealGenerationService.generateAppealDraft(parsedInput);
+        return text(appealLetter);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Invalid appeal payload.";
