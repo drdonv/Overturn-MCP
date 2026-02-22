@@ -1,7 +1,7 @@
 import "dotenv/config";
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createServer } from "./src/server/create-server";
+import { createServer } from "./src/server/create-server.js";
 
 let shutdownInProgress = false;
 

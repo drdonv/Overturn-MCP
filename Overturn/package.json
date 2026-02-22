@@ -24,7 +24,9 @@
     "postinstall": "mcp-use generate-types || true",
     "build": "mcp-use build",
     "dev": "mcp-use dev",
-    "start": "mcp-use start",
+    "start": "node dist/index.js",
+    "start:http": "mcp-use start",
+    "tunnel": "mcp-use dev --tunnel --no-open",
     "deploy": "mcp-use deploy"
   },
   "dependencies": {

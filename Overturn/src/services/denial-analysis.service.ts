@@ -1,5 +1,5 @@
-import { DenialMapping } from "../constants/denial";
-import { normalizeCode } from "../utils/normalization";
+import { DenialMapping } from "../constants/denial.js";
+import { normalizeCode } from "../utils/normalization.js";
 
 export class DenialAnalysisService {
   analyzeCodes(codes: string[]) {

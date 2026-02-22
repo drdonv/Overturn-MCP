@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-import { generateAppealDraftSchema } from "../schemas/tool-schemas";
+import { generateAppealDraftSchema } from "../schemas/tool-schemas.js";
 
 export class AppealGenerationService {
   generateAppealDraft(input: z.infer<typeof generateAppealDraftSchema>): string {

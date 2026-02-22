@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { PDFParse } from "pdf-parse";
 
-import { getErrorMessage } from "../utils/errors";
+import { getErrorMessage } from "../utils/errors.js";
 
 export class PdfExtractionService {
   async extractClaimData(filePath: string) {

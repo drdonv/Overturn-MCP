@@ -34,3 +34,5 @@ npm run deploy
 - Set `GEMINI_API_KEY` as a secret for LLM parsing in Manufact.
 - Optional: set `ANTHROPIC_API_KEY` and toggle `USE_CLAUDE_PARSER=true` if you switch parser providers.
 - Keep `GEMINI_MODEL` and `USE_CLAUDE_PARSER` in env config (non-secret).
+- Use `npm run start` to run the production stdio server locally.
+- Use `npm run tunnel` for local HTTP+tunnel testing of `/mcp` endpoints.

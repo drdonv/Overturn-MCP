@@ -1,24 +1,24 @@
 import type { MCPServer } from "mcp-use/server";
 import { object, text } from "mcp-use/server";
 
-import { DenialMapping, denialKnowledgeBase } from "../constants/denial";
-import { DenialAnalysisService } from "../services/denial-analysis.service";
-import { AppealGenerationService } from "../services/appeal-generation.service";
-import { LlmDenialParsingService } from "../services/llm-denial-parsing.service";
-import { PdfExtractionService } from "../services/pdf-extraction.service";
-import { RegexDenialParsingService } from "../services/regex-denial-parsing.service";
+import { DenialMapping, denialKnowledgeBase } from "../constants/denial.js";
+import { DenialAnalysisService } from "../services/denial-analysis.service.js";
+import { AppealGenerationService } from "../services/appeal-generation.service.js";
+import { LlmDenialParsingService } from "../services/llm-denial-parsing.service.js";
+import { PdfExtractionService } from "../services/pdf-extraction.service.js";
+import { RegexDenialParsingService } from "../services/regex-denial-parsing.service.js";
 import {
   analyzeDenialCodesSchema,
   extractAndAnalyzeDenialSchema,
   extractClaimDataSchema,
   generateAppealDraftSchema,
-} from "../schemas/tool-schemas";
+} from "../schemas/tool-schemas.js";
 import {
   classifyPdfError,
   getErrorMessage,
   mcpErrorResponse,
-} from "../utils/errors";
-import { normalizeCode } from "../utils/normalization";
+} from "../utils/errors.js";
+import { normalizeCode } from "../utils/normalization.js";
 
 const pdfExtractionService = new PdfExtractionService();
 const denialAnalysisService = new DenialAnalysisService();

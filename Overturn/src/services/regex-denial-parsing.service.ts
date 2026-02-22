@@ -1,4 +1,4 @@
-import { DenialMapping } from "../constants/denial";
+import { DenialMapping } from "../constants/denial.js";
 
 export class RegexDenialParsingService {
   private readonly claimPatterns = [
